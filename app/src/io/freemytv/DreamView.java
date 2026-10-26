@@ -157,10 +157,10 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         super(c);
         data = HomeData.get(c);
         recs = Recs.get(c);
-        playing = new NowPlaying.Watch(c, () -> {
+        playing = new NowPlaying.Watch(c, () -> {   // no recording here: the screensaver can run in another process
             fitPlaying();
             onData();
-        });
+        }, false);
         Shaders.dream(scene.palette);
         scene.setMotion(0.4f, 0.32f);
         scene.applyPalette();
