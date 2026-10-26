@@ -48,6 +48,7 @@ final class Recs {
         String title, backdrop, meta = "", app, pkg;
         String link;            // opens the title in its app (looked up with Watchmode), or null: the app's home
         boolean detailed;
+        boolean anime;          // TMDB's Animation genre: cartoons and anime (movies and shows)
         java.io.File photo;     // one of your own photos (Photos): no title, no caption
     }
 
@@ -60,7 +61,7 @@ final class Recs {
     private static final int ANIMATION = 16;
     private static final long LIST_EVERY = 6 * 3600_000L;
     /** Bump when what is saved for each title changes (the saved list is discarded and fetched again). */
-    private static final int CACHE_VERSION = 4;
+    private static final int CACHE_VERSION = 5;
     private static final int MANHA = 0, TARDE = 1, NOITE = 2;
     /** Service name on TMDB (part of the name, lowercase) → TV app (HomeApps key, package). */
     private static final String[][] SERVICES = {
@@ -231,6 +232,45 @@ final class Recs {
         return (cut > 0 ? t.substring(0, cut) : t).trim();
     }
 
+    /**
+     * A Netflix-style row: up to `max` picks, one per franchise, rotating by the supplied selection cycle. `kind` is
+     * null (all), "movie", "tv" or "anime" (movies and shows). Picks whose image is already on disk come first. Same
+     * eligibility as now(): an app on the TV, or a title whose details aren't known yet.
+     */
+    List<Pick> row(String kind, int max) {
+        long hour = System.currentTimeMillis() / 3600_000L;
+        return row(kind, max, hour * Math.max(1, max));
+    }
+
+    /** A stable caller-controlled rotation used by Home so refreshes happen on visits, not while focus is moving. */
+    List<Pick> row(String kind, int max, long rotation) {
+        List<Pick> out = new ArrayList<>();
+        if (!hasKey(context) || max <= 0) return out;
+        List<Pick> ready = new ArrayList<>(), rest = new ArrayList<>();
+        Map<String, Boolean> have = new HashMap<>();   // one look per app, not per title
+        for (Pick p : picks) {
+            boolean matches = "anime".equals(kind) ? p.anime : (kind == null || kind.equals(p.kind));
+            if (!matches) continue;
+            if (p.detailed && !(p.pkg != null && have.computeIfAbsent(p.pkg, this::installed))) continue;   // app missing: skip
+            (hasImage(p) ? ready : rest).add(p);
+        }
+        java.util.Set<String> seen = new java.util.HashSet<>();   // one per franchise
+        java.util.Set<String> keys = new java.util.HashSet<>();   // never the same pick twice
+        addRow(out, seen, keys, ready, rotation, max);
+        addRow(out, seen, keys, rest, rotation, max);
+        return out;
+    }
+
+    private static void addRow(List<Pick> out, java.util.Set<String> seen, java.util.Set<String> keys,
+                               List<Pick> list, long rotation, int max) {
+        if (list.isEmpty()) return;
+        int start = (int) Math.floorMod(rotation, (long) list.size());
+        for (int i = 0; i < list.size() && out.size() < max; i++) {
+            Pick p = list.get((start + i) % list.size());
+            if (keys.add(key(p)) && seen.add(franchise(p.title))) out.add(p);
+        }
+    }
+
     /** Name of the service the pick is on ("Netflix"), or empty. */
     static String serviceName(Pick p) {
         return p == null || p.app == null ? "" : SERVICE_NAME.get(p.app);
@@ -382,6 +422,53 @@ final class Recs {
         });
     }
 
+    /**
+     * While the home screen shows the rows: details and image for what row() would return, at most 40 titles, skipping
+     * the ones already fetched. One at a time in the background; safe to call every refresh.
+     */
+    void prefetchRows(long rotation) {
+        if (!hasKey(context) || fetching) return;
+        long sinceFail = System.currentTimeMillis() - failedAt;
+        if (failedAt != 0 && sinceFail >= 0 && sinceFail < 10 * 60_000L) return;
+        int cap = 40;
+        List<Pick> todo = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String kind : new String[] {null, "movie", "tv", "anime"}) {
+            for (Pick p : row(kind, cap, rotation)) {
+                if (todo.size() >= cap) break;
+                if (!seen.add(key(p))) continue;
+                if (!p.detailed || (p.pkg != null && !hasImage(p))) todo.add(p);
+            }
+        }
+        if (todo.isEmpty()) return;
+        fetching = true;
+        io.execute(() -> {
+            int failures = 0;
+            String last = "";
+            try {
+                // One failing title (gone from TMDB, an image that won't download) doesn't stop the others.
+                for (Pick p : todo) {
+                    try {
+                        if (!p.detailed) fetchDetails(p);
+                        if (p.pkg != null) download(p);
+                    } catch (Exception e) {
+                        failures++;
+                        last = e.getMessage() == null ? e.toString() : e.getMessage();
+                    }
+                }
+                save();
+                if (failures == todo.size()) {
+                    error = last;
+                    failedAt = System.currentTimeMillis();
+                    AppLog.w("recommendations (rows): " + last);
+                }
+            } finally {
+                fetching = false;
+                notifyListeners();
+            }
+        });
+    }
+
     /** This hour's picks for the three tabs (Explore, Movies, Shows), without repeats. */
     List<Pick> wanted() {
         List<Pick> out = new ArrayList<>();
@@ -487,12 +574,14 @@ final class Recs {
     private static void add(List<Pick> list, JSONObject o, String kind) {
         String backdrop = o.optString("backdrop_path", "");
         if (backdrop.isEmpty() || "null".equals(backdrop)) return;
-        if (Config.HIDE_ANIMATION && animated(o)) return;
+        boolean anime = animated(o);
+        if (Config.HIDE_ANIMATION && anime) return;
         Pick p = new Pick();
         p.id = o.optInt("id");
         p.kind = kind;
         p.title = o.optString(kind.equals("movie") ? "title" : "name");
         p.backdrop = backdrop;
+        p.anime = anime;
         list.add(p);
     }
 
@@ -773,7 +862,9 @@ final class Recs {
             if (forLight != light) return;   // the design changed midway: this one is stale
             synchronized (images) {
                 images.put(p.backdrop, backdrop);
-                while (images.size() > (forLight ? 10 : 4)) images.remove(images.keySet().iterator().next());
+                // Home rows can reference the full 24-title list at once. Keeping every ready card avoids the old
+                // 10-image cache evicting artwork as other row layers redraw, causing repeated decode/notify loops.
+                while (images.size() > (forLight ? 24 : 4)) images.remove(images.keySet().iterator().next());
             }
             notifyListeners();
         } catch (IOException | RuntimeException | OutOfMemoryError e) {
@@ -817,7 +908,7 @@ final class Recs {
             for (Pick p : picks) {
                 a.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("title", p.title).put("backdrop", p.backdrop).put("link", p.link == null ? "" : p.link)
                         .put("meta", p.meta).put("app", p.app == null ? "" : p.app).put("pkg", p.pkg == null ? "" : p.pkg)
-                        .put("detailed", p.detailed));
+                        .put("detailed", p.detailed).put("anime", p.anime));
             }
             SharedPreferences.Editor e = cache.edit().putString("picks", a.toString()).putInt("period", period).putLong("listAt", listAt)
                     .putString("language", listLanguage)
@@ -846,6 +937,7 @@ final class Recs {
             p.app = o.optString("app").isEmpty() ? null : o.optString("app");
             p.pkg = o.optString("pkg").isEmpty() ? null : o.optString("pkg");
             p.detailed = o.optBoolean("detailed");
+            p.anime = o.optBoolean("anime");
             out.add(p);
         }
         return out;

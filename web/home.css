@@ -1,7 +1,7 @@
 /*
- * The home screen on a 1920 × 1080 stage, with the Android app's measurements (HomeView): the title and tabs at the top
- * left, icon-only glass buttons at the top right, three picks, and the glass shelf at the bottom; ↓ on the shelf opens
- * the drawer (inputs, shortcuts, weather, prices). Light by day, dark from sunset to sunrise.
+ * The home screen on a 1920 × 1080 stage: quick actions, weather, dock, then recommendations. The tabs stay with the
+ * recommendation row, and weather plus quick actions remain visible while the remote moves focus. Light by day, dark
+ * from sunset to sunrise.
  * No CSS variables, grid or backdrop-filter: older LG TVs (webOS 3 and 4) don't have them, and blur is too heavy for
  * their GPUs. Only transform and opacity animate.
  */
@@ -65,10 +65,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night #sky .night { opacity: 1; }
 .night #sky .veil { background: rgba(11, 11, 13, 0.78); }
 .night #sky .lift { background: #000; }
-.drawer-open #sky .lift { opacity: 0.32; }
-.night.drawer-open #sky .lift { opacity: 0.42; }
 
-/* MARK: - Moving parts: the top fades and everything rises when the drawer opens. */
+/* MARK: - Persistent home rows. */
 
 /* Each part is its own stack, so a focused tile (z-index) never shows over the drawer, a sheet or the screensaver. */
 #home { z-index: 1; }
@@ -76,27 +74,18 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .sheet { z-index: 3; }
 #saver { z-index: 4; }
 
-#home, #drawer {
-  -webkit-transition: -webkit-transform 0.38s cubic-bezier(0.32, 0.72, 0.2, 1), opacity 0.28s;
-  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0.2, 1), opacity 0.28s;
-}
-.drawer-open #home { -webkit-transform: translateY(-560px); transform: translateY(-560px); }
-#top { -webkit-transition: opacity 0.2s; transition: opacity 0.2s; }
-.drawer-open #top { opacity: 0; }
-#drawer { -webkit-transform: translateY(560px); transform: translateY(560px); opacity: 0; }
-.drawer-open #drawer { -webkit-transform: none; transform: none; opacity: 1; }
-/* Closed, it still spans the screen below the shelf: only its keys take the pointer, and only when it's open. */
+/* The quick actions and weather share a fixed layer above the dock. */
 #drawer { pointer-events: none; }
-.drawer-open #drawer .key { pointer-events: auto; }
+#drawer .key { pointer-events: auto; }
 
 /* MARK: - Title and tabs */
 
 #title {
   position: absolute;
   left: 76px;
-  top: 52px;
+  top: 792px;
   margin: 0;
-  font-size: 76px;
+  font-size: 42px;
   font-weight: 600;
   letter-spacing: 0.004em;
   line-height: 1;
@@ -106,17 +95,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   transition: color 2s;
 }
 
-#tabs { position: absolute; left: 54px; top: 158px; height: 68px; white-space: nowrap; }
+#tabs { position: absolute; left: 270px; top: 778px; height: 56px; white-space: nowrap; }
 .tab {
   position: relative;
   display: inline-block;
-  height: 68px;
-  padding: 0 26px;
+  height: 56px;
+  padding: 0 20px;
   margin-right: 4px;
-  border-radius: 34px;
-  font-size: 30px;
+  border-radius: 28px;
+  font-size: 24px;
   font-weight: 500;
-  line-height: 68px;
+  line-height: 56px;
   color: #6E6E73;
   -webkit-transition: -webkit-transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2), background-color 0.17s, box-shadow 0.2s, color 0.17s;
   transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2), background-color 0.17s, box-shadow 0.2s, color 0.17s;
@@ -137,7 +126,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #quotes {
   position: absolute;
   right: 80px;
-  top: 178px;
+  top: 796px;
   height: 28px;
   font-size: 21px;
   line-height: 28px;
@@ -153,6 +142,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #quotes.hide { opacity: 0; }
 .night #quotes { color: rgba(245, 245, 247, 0.62); }
 .night #quotes svg { fill: rgba(245, 245, 247, 0.55); }
+
+/* Quick actions now live in the first row; the old top-right duplicates are hidden. */
+#buttons { display: none; }
 
 /* Live TV, HDMI Inputs and Settings: glass circles; the focused one turns white, with its name below. */
 .round {
@@ -199,8 +191,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .card {
   position: absolute;
-  top: 262px;
-  height: 442px;
+  top: 852px;
+  height: 144px;
   -webkit-transition: -webkit-transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15);
   transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15);
 }
@@ -240,12 +232,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .card .name {
   position: absolute;
   left: 0;
-  top: 464px;
+  top: 154px;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 31px;
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: 0.012em;
   color: #1D1D1F;
@@ -255,12 +247,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .card .meta {
   position: absolute;
   left: 0;
-  top: 506px;
+  top: 190px;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 25px;
+  font-size: 20px;
   font-weight: 500;
   color: #6E6E73;
 }
@@ -272,8 +264,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #clock {
   position: absolute;
   left: 76px;
-  top: 300px;
-  font-size: 176px;
+  top: 852px;
+  font-size: 78px;
   font-weight: 200;
   letter-spacing: -0.01em;
   line-height: 1;
@@ -289,9 +281,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 #platter {
   position: absolute;
-  top: 814px;
+  top: 550px;
   height: 206px;
-  border-radius: 62px;
+  border-radius: 30px;
   background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.4));
   background: linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.4));
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12), inset 0 1.5px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
@@ -321,9 +313,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   -webkit-transition: -webkit-transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.2s, opacity 0.3s;
   transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.2s, opacity 0.3s;
 }
-.tile img { position: absolute; left: 50%; top: 50%; max-width: 76%; max-height: 62%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
+.tile img { position: absolute; left: 50%; top: 50%; max-width: 82%; max-height: 67%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
 /* a logo lifted off the TV's icon (home.js): as large as the tile allows */
-.tile img.logo { width: 70%; height: 50%; max-width: none; max-height: none; object-fit: contain; }
+.tile img.logo { width: 76%; height: 54%; max-width: none; max-height: none; object-fit: contain; }
 .tile .word {
   position: absolute;
   left: 8%;
@@ -379,7 +371,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .key {
   position: absolute;
-  top: 540px;
+  top: 24px;
   height: 126px;
   border-radius: 20px;
   text-align: center;
@@ -395,7 +387,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night .key.off { color: rgba(255, 255, 255, 0.42); }
 .night .key.focus { color: #1C1C1E; }
 
-.panel { position: absolute; top: 708px; height: 300px; border-radius: 30px; overflow: hidden; color: #1D1D1F; }
+.panel { position: absolute; top: 190px; height: 320px; border-radius: 30px; overflow: hidden; color: #1D1D1F; }
 .night .panel { color: #F5F5F7; }
 .panel .head { position: absolute; left: 34px; top: 30px; font-size: 25px; font-weight: 600; color: #6E6E73; white-space: nowrap; }
 .panel .side { position: absolute; right: 34px; top: 33px; font-size: 21px; font-weight: 500; color: #8E8E93; white-space: nowrap; }

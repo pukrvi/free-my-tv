@@ -44,10 +44,10 @@ final class HomeData {
     private static String quote() {
         return CURRENCY.equals("USD") || inDollars ? "USDT" : CURRENCY;
     }
-    // Both forecasts in one answer, the next 48 hours and today plus 5 days: Home Settings → Forecast switches without
+    // Both forecasts in one answer, the next 48 hours and today plus 6 days: Home Settings → Forecast switches without
     // asking again, and offline too.
     private static final String WEATHER_QUERY = "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code"
-            + "&hourly=temperature_2m,weather_code,is_day&timezone=auto&forecast_days=6&forecast_hours=48";
+            + "&hourly=temperature_2m,weather_code,is_day&timezone=auto&forecast_days=7&forecast_hours=48";
 
     private static String weatherPlace() {
         return Prefs.latitude() + "," + Prefs.longitude();
@@ -132,7 +132,7 @@ final class HomeData {
         final List<Double> hourTemp = new ArrayList<>();
         final List<Integer> hourCode = new ArrayList<>();
         final List<Boolean> hourDay = new ArrayList<>();
-        // The next 5 days (from tomorrow): noon of each day on the TV's clock, high, low and code.
+        // The next 6 days (from tomorrow): noon of each day on the TV's clock, high, low and code.
         final List<Long> days = new ArrayList<>();
         final List<Double> dayMax = new ArrayList<>();
         final List<Double> dayMin = new ArrayList<>();
@@ -318,7 +318,7 @@ final class HomeData {
         JSONArray dates = daily.getJSONArray("time"), highs = daily.getJSONArray("temperature_2m_max"),
                 lows = daily.getJSONArray("temperature_2m_min"), codes = daily.optJSONArray("weather_code");
         long now = System.currentTimeMillis();
-        for (int i = 0; codes != null && i < dates.length() && w.days.size() < 5; i++) {
+        for (int i = 0; codes != null && i < dates.length() && w.days.size() < 6; i++) {
             String date = dates.getString(i);
             // Only days that haven't started at the city: today, and past days in a forecast kept offline, are left out.
             if (localTime(date + "T12:00", zone) - 12 * 3600_000L <= now) continue;

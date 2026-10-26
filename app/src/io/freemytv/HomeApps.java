@@ -58,6 +58,8 @@ final class HomeApps {
     static final int APP = 0, LIVE_TV = 1, INPUT = 2, ALL_APPS = 3, SETTINGS = 4, ANDROID_SETTINGS = 5, DEVICE = 6;
     /** The "HDMI Inputs" button: opens the bottom drawer on the inputs (the home screen handles it). */
     static final int INPUTS = 7;
+    /** The "Sleep Timer" chip: opens the quick picker right on the home screen (the home screen handles it). */
+    static final int SLEEP = 8;
     /** Image size of each card (16:9; on screen it shows up to ~330 px wide). */
     static final int TILE_W = 384, TILE_H = 216;
 
@@ -304,10 +306,11 @@ final class HomeApps {
         return shortcut(SETTINGS, "settings", Ui.tr("Settings"), "settings");
     }
 
-    /** Shortcuts in the bottom drawer. */
+    /** Shortcuts in the chips row under the shelf. */
     static List<Item> drawerShortcuts(Context c) {
         List<Item> items = new ArrayList<>();
         items.add(shortcut(ALL_APPS, "all", Ui.tr("All Apps"), "apps"));
+        items.add(shortcut(SLEEP, "sleep", Ui.tr("Sleep Timer"), "bedtime"));
         items.add(shortcut(SETTINGS, "settings", Ui.tr("Home Settings"), "settings"));
         items.add(shortcut(ANDROID_SETTINGS, "tv-settings", Ui.tr("TV Settings"), "tv_settings"));
         // HY300 projectors (Hotack, Allwinner H713): keystone and focus live in the maker's settings app, and the

@@ -230,6 +230,9 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   stayed on screen over it) should come up.
 - The home screen is drawn by hand on one Canvas (`HomeView`); the glass and the sky are AGSL shaders (`Shaders`,
   Android 13+, with a fallback for 8 to 12). Keep it at 60 fps: no allocations in `onDraw`, no work on the UI thread.
+- For home-screen layout, visual states, focus behavior, and recommendation refresh timing, read [DESIGN.md](DESIGN.md)
+  before changing `HomeView` or `web/home.js` / `web/home.css`. It records the user's final TV design preferences; follow
+  it across platforms while preserving each platform's rendering constraints.
 - Some TVs draw their UI at 1280×720 on a 1080p panel (TCL's 1 GB models: `ro.surface_flinger.max_graphics_width`
   and `_height`, `ro.config.low_ram`). There every pixel and every MB counts: `Backdrop` builds its images at the UI's
   size (and the picks use TMDB's w1280), and the shelf logos have a copy at the resting size and one at the focused

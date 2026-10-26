@@ -1,9 +1,8 @@
 /*
  * The home screen for web-app TVs (LG webOS, Samsung Tizen), with the Android app's design and behavior (HomeView):
- *  - top: the "For You" title and the tabs (Explore, Movies, Shows); icon-only glass buttons at the right (Live TV,
- *    HDMI Inputs, Settings) and the crypto quotes at the end of the tab row;
- *  - three picks for this hour in the selected tab; the background is the first one's photo, blurred and almost white;
- *  - the glass shelf with the apps; ↓ opens the drawer (inputs, shortcuts, weather, prices); ↑ or Back closes it;
+ *  - quick actions at the top, then weather and the app dock, with recommendation picks below;
+ *  - the "For You" tabs (Explore, Movies, Shows) stay with the recommendation row; its first photo is the soft sky;
+ *  - weather and quick actions stay visible while focus moves between buttons, apps and recommendations;
  *  - a night look from sunset to sunrise; a screensaver after a few idle minutes.
  * The remote's arrows, OK and Back move the focus; a pointer (LG's Magic Remote) focuses what it points at.
  */
@@ -79,9 +78,8 @@
     ['jellyfin', /jellyfin/i, /jellyfin/i, ['#AA5CC3', '#00A4DC']],
     ['spotify', /spotify/, /spotify/i, ['#1DB954', '#0F7A36']]
   ];
-  // Apps shown at once, as on Android: 8 (today's smallest tiles, 178 wide); the shelf scrolls for the rest. The
-  // built-in list keeps 8 too.
-  var SHELF_VISIBLE = 8, FEW_APPS = 8;
+  // Six app marks fit at their full banner size. The shelf scrolls one app at a time for the rest.
+  var SHELF_VISIBLE = 6, FEW_APPS = 8;
 
   function shelfKey(app) {
     for (var i = 0; i < SHELF.length; i++) if (SHELF[i][1].test(app.id) || SHELF[i][2].test(app.title)) return SHELF[i];
@@ -479,14 +477,16 @@
   function renderShelf() {
     var n = Math.min(shelf.length, SHELF_VISIBLE), gap = 48, pad = 40;
     // 16:9 tiles, as on Android: never taller than 126, and the glass keeps its bottom edge.
-    var tw = Math.min(126 * 16 / 9, (1760 - Math.max(0, n - 1) * gap) / Math.max(1, n)), th = tw * 9 / 16;
+    // Keep 40px inside the glass on each side; the platter itself matches the weather row's 1760px width.
+    var tw = Math.min(126 * 16 / 9, (1760 - 2 * pad - Math.max(0, n - 1) * gap) / Math.max(1, n)), th = tw * 9 / 16;
     var width = n * tw + Math.max(0, n - 1) * gap, left = (1920 - width) / 2;
     var platter = $('platter');
     platter.style.display = n ? '' : 'none';
-    platter.style.left = (left - pad) + 'px';
-    platter.style.width = (width + 2 * pad) + 'px';
-    platter.style.top = (814 + 126 - th) + 'px';
+    platter.style.left = '80px';
+    platter.style.width = '1760px';
+    platter.style.top = '550px';
     platter.style.height = (th + 2 * pad) + 'px';
+    platter.style.borderRadius = '30px';
     $('quotes').style.right = (1920 - left - width) + 'px';
     var tiles = $('tiles');
     tiles.innerHTML = '';
@@ -495,7 +495,7 @@
     shelfFirst = Math.max(0, Math.min(shelfFirst, shelf.length - n));
     for (var i = 0; i < shelf.length; i++) {
       var t = el('div', 'tile', tiles);
-      t.style.top = (854 + 126 - th) + 'px';
+      t.style.top = (550 + pad + 126 - th) + 'px';
       t.style.width = tw + 'px';
       t.style.height = th + 'px';
       face(shelf[i], t, wordFit(shelf[i].title, tw, 30));
@@ -546,24 +546,22 @@
     var d = $('drawer');
     d.innerHTML = '';
     drawerItems = [];
+    // Match Android: shortcuts lead the row, so Up from the dock always lands on All Apps.
+    drawerItems.push({label: tr('All Apps'), symbol: 'apps', run: openApps});
+    drawerItems.push({label: tr('Home Settings'), symbol: 'settings', run: openSettings});
+    if (TV.canOpenSettings) drawerItems.push({label: tr('TV Settings'), symbol: 'tv_settings', run: tvSettings});
     for (var i = 0; i < inputs.length; i++) {
       var x = inputs[i];
       drawerItems.push({label: x.label || tr('Live TV'), symbol: x.symbol, off: !x.connected, run: launcher(x.id, x.label)});
     }
-    drawerInputs = drawerItems.length;
-    drawerItems.push({label: tr('All Apps'), symbol: 'apps', run: openApps});
-    drawerItems.push({label: tr('Home Settings'), symbol: 'settings', run: openSettings});
-    if (TV.canOpenSettings) drawerItems.push({label: tr('TV Settings'), symbol: 'tv_settings', run: tvSettings});
-    var n = drawerItems.length, gap = 18, groupGap = 56, groups = drawerInputs > 0 && drawerInputs < n ? 2 : 1;
-    var tw = Math.min(230, (1760 - Math.max(0, n - groups) * gap - (groups - 1) * groupGap) / Math.max(1, n));
+    drawerInputs = inputs.length;
+    var n = drawerItems.length, gap = 18;
+    var tw = (1760 - Math.max(0, n - 1) * gap) / Math.max(1, n);
     var xPos = 80;
     for (var k = 0; k < n; k++) {
-      if (k === drawerInputs && k > 0) {
-        xPos += groupGap - gap;
-        el('div', 'row-title', d, tr('Shortcuts')).style.left = (xPos + 4) + 'px';
-      }
-      if (k === 0 && drawerInputs) el('div', 'row-title', d, tr('Inputs')).style.left = '84px';
-      var item = drawerItems[k], key = el('div', 'key glass' + (item.off ? ' off' : ''), d);
+      // Inputs and shortcuts share one evenly spaced row. All keys use the subdued disconnected-input tint
+      // until focus applies the existing bright selected style.
+      var item = drawerItems[k], key = el('div', 'key glass off', d);
       key.style.left = xPos + 'px';
       key.style.width = tw + 'px';
       sym(item.symbol, key);
@@ -586,6 +584,7 @@
       w.id = 'weather';
       w.style.left = '80px';
       w.style.width = ((qt ? split - 16 : 1840) - 80) + 'px';
+      w.style.height = '320px';
       renderWeather(w);
     }
     if (qt) {
@@ -594,6 +593,7 @@
       var left = wx ? split + 16 : 80;
       q.style.left = left + 'px';
       q.style.width = (1840 - left) + 'px';
+      q.style.height = '320px';
       renderPrices(q, coins);
     }
   }
@@ -624,6 +624,13 @@
       if (days) el('span', 'low', t, Data.degrees(x.min));
     }
     var sun = el('div', 'sun', card);
+    // Balance the visible inset of the city label and the sunrise/sunset line in the 320px weather card.
+    card.querySelector('.head').style.top = '38px';
+    sun.style.top = '252px';
+    // The web TV view shows the selected forecast (hours or days) as one horizontal row. Center its content
+    // between the weather card's equally inset top and bottom boundaries.
+    var hoursRow = card.querySelector('.hours');
+    if (hoursRow) hoursRow.style.top = '97px';
     if (w.sunrise) { var a = el('span', '', sun); sym('sunrise', a); a.appendChild(document.createTextNode(trf('Sunrise {time}', {time: Data.time(w.sunrise)}))); }
     if (w.sunset) { var b = el('span', '', sun); sym('sunset', b); b.appendChild(document.createTextNode(trf('Sunset {time}', {time: Data.time(w.sunset)}))); }
   }
@@ -645,9 +652,8 @@
 
   function openDrawer() {
     if (!drawerItems.length) return;
-    var tiles = $('tiles').children;
     st.zone = Z.DRAWER;
-    st.drawer = Math.min(drawerItems.length - 1, nearest(document.querySelectorAll('#drawer .key'), centerX(tiles[st.shelf])));
+    st.drawer = 0;
     updateFocus();
   }
 
@@ -948,7 +954,7 @@
       case Z.TOP:
         if (st.top < 3) return;
         if (st.top === 3) { var live = liveTV(); if (live) launcher(live.id, tr('Live TV'))(); }
-        else if (st.top === 4) { st.zone = Z.SHELF; openDrawer(); st.drawer = 1 < drawerInputs ? 1 : 0; updateFocus(); }
+        else if (st.top === 4) { st.zone = Z.SHELF; openDrawer(); st.drawer = 0; updateFocus(); }
         else openSettings();
         return;
       case Z.CARDS:
@@ -990,20 +996,22 @@
     switch (st.zone) {
       case Z.SHELF:
         if (dx) st.shelf = Math.max(0, Math.min(shelf.length - 1, st.shelf + dx));
-        else if (dy > 0) { openDrawer(); return; }
-        else if (dy < 0) {
+        else if (dy > 0) {
           if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, centerX(tiles[st.shelf])); }
-          else { st.zone = Z.TOP; st.top = st.tab; }
+        }
+        else if (dy < 0) {
+          openDrawer();
+          return;
         }
         break;
       case Z.CARDS:
-        if (dx) st.card = Math.max(0, Math.min(cards.length - 1, st.card + dx));
-        else if (dy < 0) { st.zone = Z.TOP; st.top = st.tab; }
-        else if (shelf.length) { st.zone = Z.SHELF; st.shelf = nearest(tiles, centerX(cardNodes[st.card])); }
+        if (dx < 0 && st.card === 0) { st.zone = Z.TOP; st.top = st.tab; }
+        else if (dx) st.card = Math.max(0, Math.min(cards.length - 1, st.card + dx));
+        else if (dy < 0 && shelf.length) { st.zone = Z.SHELF; st.shelf = nearest(tiles, centerX(cardNodes[st.card])); }
         break;
       case Z.TOP:
         if (dx) {
-          st.top = Math.max(0, Math.min(5, st.top + dx));
+          st.top = Math.max(0, Math.min(2, st.top + dx));
           if (st.top < 3) selectTab(st.top);   // as on Apple TV: focusing a tab selects it
         } else if (dy > 0) {
           if (cards.length) { st.zone = Z.CARDS; st.card = Math.min(cards.length - 1, st.top < 3 ? 0 : cards.length - 1); }
@@ -1012,7 +1020,7 @@
         break;
       case Z.DRAWER:
         if (dx) st.drawer = Math.max(0, Math.min(drawerItems.length - 1, st.drawer + dx));
-        else if (dy < 0) { closeDrawer(); return; }
+        else if (dy > 0) { closeDrawer(); return; }
         break;
       case Z.APPS:
         var g = st.grid + dx + dy * 5;
@@ -1056,8 +1064,6 @@
   function hover(node, zone, index) {
     node.onmouseover = function () {
       if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT || zone === Z.LANG || zone === Z.ABOUT))) return;
-      if (zone === Z.DRAWER && st.zone !== Z.DRAWER) return;
-      if (zone !== Z.DRAWER && st.zone === Z.DRAWER && zone !== Z.SHELF) return;
       if (zone === Z.SHELF && st.zone === Z.DRAWER) closeDrawer();
       st.zone = zone;
       if (zone === Z.TOP) { st.top = index; if (index < 3) selectTab(index); }
@@ -1216,7 +1222,7 @@
     });
   }
 
-  /** Back to the home screen (the app was opened again): the shelf, everything closed, the first tab. */
+  /** Back to the home screen (the app was opened again): land on the first app, with everything closed. */
   function reset() {
     hideSaver();
     closeSheets();
@@ -1246,6 +1252,7 @@
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) { hideSaver(); return; }
     idleAt = Date.now();
+    reset();
     loadApps(function () { renderShelf(); renderDrawer(); updateFocus(); Data.refresh(); });
   });
 
