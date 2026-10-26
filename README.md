@@ -4,12 +4,12 @@
 
 # Free My TV
 
-**A fast, ad-free home screen for Google TV, LG and Samsung TVs.**
+**A fast, ad-free Android TV home screen tuned for TCL Smart TV Pro (Android 12).**
 
-Trending picks from your own apps, the weather at a glance, and a look that follows the sunset.<br>
+Remote-first home and settings screens, trending picks from your own apps, and weather at a glance.<br>
 Open source. Built with Claude Code. One button to undo.
 
-[**freemytv.io**](https://freemytv.io) · [Install](#install) · [LG TVs](#lg-tvs-webos) · [Samsung TVs](#samsung-tvs-tizen) · [Any TV](#any-tv) · [Make it yours](#make-it-yours)
+[**freemytv.io**](https://freemytv.io) · [TCL setup](#tcl-smart-tv-pro-android-12) · [Install](#install) · [Design guide](DESIGN.md) · [LG TVs](#lg-tvs-webos) · [Samsung TVs](#samsung-tvs-tizen)
 
 <img src=".github/preview.webp" width="880" alt="The Free My TV home screen: a glass shelf of apps, trending picks, and a drawer with the weather and crypto prices">
 
@@ -19,19 +19,53 @@ Open source. Built with Claude Code. One button to undo.
 
 - **No ads.** No sponsored rows, banners or autoplaying promos. Not one.
 - **Your apps, front and center.** The streaming apps you actually use, on a glass shelf. Pick them and their order right on the TV.
-- **Trending, not sponsored.** Three fresh picks every hour from what's trending this week and the latest releases, only from apps you already have. Movies and Shows get their own tabs.
-- **Weather and markets, one press away.** The hour-by-hour forecast (or the next 5 days), sunrise and sunset, and live crypto prices.
+- **Trending, not sponsored.** Four remote-friendly rows—For You, Anime, Movies, and TV Shows—with fresh picks from apps already on the TV.
+- **Weather and markets, together.** The home card shows current conditions, the next six hours and six days, sunrise and sunset, and crypto prices without a forecast-range chooser.
 - **What's playing.** Music, a podcast or the radio going on in the background shows on the home screen and the screensaver: the title, the artist and the app, from any app that tells Android what it plays (*Home Settings*, off until you turn it on).
+- **Pick up where you left off.** *Continue Watching* remembers supported playback, with thumbnails and progress when available. Hold OK to remove a card or hide a recommendation. YouTube entries expire after two days; other services after ten. Enable it in *Home Settings* → *Widgets*. See the [current TCL support status](PLAYBACK_STATUS.md), including Netflix, Prime and JioHotstar limits.
 - **Light by day, dark by night.** It follows your city's real sunset, the way your phone does.
 - **A screensaver to match.** Full-screen photos of the picks with a big glass clock. Optionally (*Watch from the screensaver*, in Home Settings), OK opens the title on screen in its app, and any other button just closes it.
 - **Your own photos** (Google TV and Android TV). Send them from your computer (up to 100): the screensaver shows them, and without picks one is the home screen's background each hour.
-- **Fast.** 60 fps, every frame in 16.6 ms, on the TV's own chip. The home screen uses 96 MB of memory instead of 242 MB (−60%).<br><sub>Measured on a 98″ TCL Google TV running Android 14.</sub>
-- **Set up on the TV.** Language, your city, temperature, theme, the weather and prices cards, the forecast's hours or days, which coins, and the apps on the shelf, in Free My TV's own settings.
+- **Lightweight.** A native Android TV app with a Canvas-drawn home screen and remote-first controls.
+- **Settings built for a TV remote.** A left navigation rail updates the spacious right panel as you move through Home Screen, Screensaver, Home Settings, Widgets, Shelf, Top Buttons, Sleep Timer, Remote Buttons, TV Settings, and About this TV. Right or OK enters a section, with its first option ready.
 - **Safe.** No root. Nothing is uninstalled. One button brings back the factory home screen.
+
+## TCL Smart TV Pro (Android 12)
+
+This is the target configuration for the current Android design. The launcher uses the TV remote, a 1920 × 1080
+reference layout, the TCL home-start behavior, and the TCL-specific auto-start app operation. The weather card shows
+hours and days together; there is no setting to choose one forecast range. For the saved target, build and capture
+steps, see [the Android TV test runbook](ANDROID_TV_TESTING.md). The general home-screen rules are in
+[DESIGN.md](DESIGN.md).
 
 ## Install
 
 About ten minutes. You need a Google TV or Android TV (Android 8 or newer) and a computer on the same Wi-Fi.
+
+### Build this TCL version
+
+From this repository, build the native Android app once and install it over Wi-Fi:
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+./build.sh
+
+adb connect <TV-IP>:5555
+adb -s <TV-IP>:5555 install -r FreeMyTV.apk
+adb -s <TV-IP>:5555 shell am force-stop io.freemytv
+adb -s <TV-IP>:5555 shell am start -W -a android.intent.action.MAIN -c android.intent.category.HOME
+```
+
+Use the explicit HOME intent for verification; the `monkey` launcher command opens the app icon rather than the TV home activity.
+
+On this TCL firmware, allow `APP_AUTO_START` so the TV's boot integration can start the launcher after a restart:
+
+```bash
+adb -s <TV-IP>:5555 shell cmd appops set io.freemytv APP_AUTO_START allow
+```
+
+Use the local build configuration and signing key already set up for this checkout. Keep `config.properties` and the
+keystore private; the file contains the TMDB key, and updates must use the same signing key.
 
 ### The easy way: an AI assistant
 
@@ -277,7 +311,7 @@ reference (fix them by hand); the others were machine-made, and corrections from
 
 ## Privacy
 
-No accounts, no analytics, no tracking. The app talks to TMDB, Open-Meteo (with the coordinates you set, or your time zone's main city), and Binance only when `show_crypto=true`, and Watchmode only when you set a `watchmode_key`. The *Now Playing widget* reads what apps are playing (title, artist, the app) through a notification listener, the only way Android shares it: Free My TV allows the listener only while the widget is on, never reads a notification with it, and asks Android to unbind it as soon as it connects, so it stays unbound. What's playing never leaves the TV. Your settings stay on your computer and your TV.
+No accounts, no analytics, no tracking. The app talks to TMDB, Open-Meteo (with the coordinates you set, or your time zone's main city), and Binance only when `show_crypto=true`, and Watchmode only when you set a `watchmode_key`. *Now Playing* and *Continue Watching* share Android's allowed notification listener to read media sessions; it does not read notification messages. While Continue Watching is enabled, it remains bound to capture playback as it happens. Viewing history stays in the TV's private app storage and expires after two days for YouTube or ten days for other services. Thumbnail loading uses artwork supplied by the streaming app; if movie/show artwork is absent, an exact title lookup can be sent to TMDB. A known YouTube video ID can fetch its public thumbnail from YouTube. Your settings stay on your computer and your TV.
 
 ## Credits
 

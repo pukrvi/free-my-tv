@@ -206,10 +206,10 @@
             android:process=":sleep"
             android:exported="false" />
 
-        <!-- Lets the home screen and the screensaver read what apps are playing (their media sessions); it unbinds itself
-             at once, so no process stays up for it. -->
+        <!-- Captures media sessions while other apps play, before they discard their paused session. -->
         <service
             android:name=".NowPlaying"
+            android:process=":home"
             android:exported="true"
             android:label="Free My TV"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">

@@ -250,7 +250,7 @@ final class Recs {
         Map<String, Boolean> have = new HashMap<>();   // one look per app, not per title
         for (Pick p : picks) {
             boolean matches = "anime".equals(kind) ? p.anime : (kind == null || kind.equals(p.kind));
-            if (!matches) continue;
+            if (!matches || hidden(p)) continue;
             if (p.detailed && !(p.pkg != null && have.computeIfAbsent(p.pkg, this::installed))) continue;   // app missing: skip
             (hasImage(p) ? ready : rest).add(p);
         }
@@ -259,6 +259,36 @@ final class Recs {
         addRow(out, seen, keys, ready, rotation, max);
         addRow(out, seen, keys, rest, rotation, max);
         return out;
+    }
+
+    private boolean hidden(Pick p) {
+        return context.getSharedPreferences("hidden-picks", Context.MODE_PRIVATE).getBoolean(key(p), false);
+    }
+
+    void hide(Pick p) {
+        context.getSharedPreferences("hidden-picks", Context.MODE_PRIVATE).edit().putBoolean(key(p), true).apply();
+    }
+
+    /** Strict title matching avoids giving a watched episode artwork from an unrelated movie. */
+    String resumeArtwork(String title) {
+        if (!hasKey(context)) return "";
+        String query = title.replaceFirst("(?i)\\s*[-–:]?\\s*S[0-9]+E[0-9]+.*$", "").trim();
+        try {
+            JSONArray results = get("/search/multi?query=" + URLEncoder.encode(query, "UTF-8")).optJSONArray("results");
+            for (int i = 0; results != null && i < results.length(); i++) {
+                JSONObject result = results.optJSONObject(i);
+                if (result == null) continue;
+                String kind = result.optString("media_type");
+                if (!kind.equals("movie") && !kind.equals("tv")) continue;
+                String name = result.optString("title", result.optString("name"));
+                String original = result.optString("original_title", result.optString("original_name"));
+                if (!query.equalsIgnoreCase(name) && !query.equalsIgnoreCase(original)) continue;
+                String path = result.optString("backdrop_path");
+                if (path.isEmpty() || path.equals("null")) path = result.optString("poster_path");
+                if (!path.isEmpty() && !path.equals("null")) return "https://image.tmdb.org/t/p/w780" + path;
+            }
+        } catch (Exception ignored) { }
+        return "";
     }
 
     private static void addRow(List<Pick> out, java.util.Set<String> seen, java.util.Set<String> keys,

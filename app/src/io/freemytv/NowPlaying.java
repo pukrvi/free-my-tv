@@ -26,13 +26,46 @@ import java.util.Objects;
 /**
  * What any app is playing (title, artist or channel, the app), from the media session each app publishes for the remote's
  * play/pause and the Assistant: one way for music, videos, radio and live streams alike. Reading the sessions needs this
- * notification listener allowed (HomeMode does it while Home Settings' Now Playing widget is on); it never reads a
- * notification and asks the system to unbind it at once, so no process stays up for it.
+ * notification listener allowed (HomeMode does it while Now Playing or Continue Watching is on); it never reads a
+ * notification. While Continue Watching is enabled, it stays bound to capture playback before apps end their sessions.
  */
 public class NowPlaying extends NotificationListenerService {
 
+    private Watch history;
+    private final Handler historyHandler = new Handler(Looper.getMainLooper());
+    private final Runnable sample = new Runnable() {
+        @Override public void run() {
+            if (!Prefs.resumeOn()) {
+                requestUnbind();
+                return;
+            }
+            if (history != null) history.update();
+            historyHandler.postDelayed(this, 15_000);
+        }
+    };
+
     @Override public void onListenerConnected() {
-        requestUnbind();
+        Prefs.init(this);
+        if (history != null) history.stop();
+        if (!Prefs.resumeOn()) {
+            requestUnbind();
+            return;
+        }
+        history = new Watch(this, () -> {}, true);
+        history.start();
+        historyHandler.removeCallbacks(sample);
+        historyHandler.postDelayed(sample, 15_000);
+    }
+
+    @Override public void onListenerDisconnected() {
+        if (history != null) history.stop();
+        history = null;
+        historyHandler.removeCallbacks(sample);
+    }
+
+    @Override public void onDestroy() {
+        onListenerDisconnected();
+        super.onDestroy();
     }
 
     private static final float[] STILL = {0.55f, 1, 0.75f}, PERIOD_MS = {170, 230, 200};
@@ -82,15 +115,23 @@ public class NowPlaying extends NotificationListenerService {
             @Override public void onSessionDestroyed() { update(); }
         };
         private boolean on;
+        private final boolean record;   // remember what played, for the home screen's Continue Watching row
         volatile String text;
 
-        Watch(Context c, Runnable changed) {
+        Watch(Context c, Runnable changed, boolean record) {
             context = c;
             this.changed = changed;
+            this.record = record;
         }
 
         void start() {
-            if (on || !Prefs.nowPlaying()) return;   // off in Home Settings: nothing watched at all
+            // The permission is shared by the Now Playing widget and, on the home screen, Continue Watching: asked
+            // while either is on, and the watch only reads sessions when one of them wants to.
+            if (on || !(Prefs.nowPlaying() || (record && Prefs.resumeOn()))) return;   // off in Home Settings: nothing watched at all
+            if (record && Prefs.resumeOn() && !(context instanceof NowPlaying)) {
+                // A previous version unbound the listener; reconnect after an update or force-stop.
+                requestRebind(component(context));
+            }
             MediaSessionManager m = context.getSystemService(MediaSessionManager.class);
             try {
                 m.addOnActiveSessionsChangedListener(this, component(context), handler);
@@ -113,6 +154,32 @@ public class NowPlaying extends NotificationListenerService {
             onActiveSessionsChanged(null);
         }
 
+        /** Prepare the matching live session for resume; HomeApps opens its UI before this callback runs. */
+        Runnable prepareResume(Resume.Entry entry) {
+            for (MediaController mc : controllers) {
+                if (!entry.pkg.equals(mc.getPackageName())) continue;
+                MediaMetadata m = mc.getMetadata();
+                MediaDescription d = m == null ? null : m.getDescription();
+                String title = d == null || d.getTitle() == null ? "" : d.getTitle().toString().trim();
+                String sub = d == null || d.getSubtitle() == null ? "" : d.getSubtitle().toString().trim();
+                String id = d == null || d.getMediaId() == null ? "" : d.getMediaId().toString().trim();
+                if (!entry.title.isEmpty() && (!entry.title.equals(title) || !entry.sub.equals(sub)
+                        || !entry.mediaId.isEmpty() && !id.isEmpty() && !entry.mediaId.equals(id))) continue;
+                PlaybackState s = mc.getPlaybackState();
+                long actions = s == null ? 0 : s.getActions();
+                MediaController.TransportControls controls = mc.getTransportControls();
+                return () -> {
+                    try {
+                        if (!entry.title.isEmpty() && entry.pos > 0 && (actions & PlaybackState.ACTION_SEEK_TO) != 0) controls.seekTo(entry.pos);
+                        controls.play();
+                    } catch (RuntimeException e) {
+                        AppLog.w("resume playback: " + e.getMessage());
+                    }
+                };
+            }
+            return null;
+        }
+
         @Override public void onActiveSessionsChanged(List<MediaController> sessions) {
             for (MediaController mc : controllers) mc.unregisterCallback(callback);
             controllers.clear();
@@ -126,6 +193,13 @@ public class NowPlaying extends NotificationListenerService {
         }
 
         private void update() {
+            if (record && Prefs.resumeOn()) {
+                boolean wrote = false;
+                // Sessions are ordered most-recent first. Resume.record inserts at the front, so record in reverse to
+                // keep the current app first when several services still publish paused sessions.
+                for (int i = controllers.size() - 1; i >= 0; i--) wrote |= Resume.record(context, controllers.get(i));
+                if (wrote) changed.run();   // the row has something new (or a title moved up), not just a position
+            }
             String now = null;
             for (MediaController mc : controllers) {   // most recent first
                 PlaybackState s = mc.getPlaybackState();

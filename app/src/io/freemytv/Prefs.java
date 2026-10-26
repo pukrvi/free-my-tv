@@ -170,6 +170,13 @@ final class Prefs {
         version++;
     }
 
+    /** The Continue Watching row, which remembers what other apps were playing (Resume). Shares the listener's permission. */
+    static boolean resumeOn() { return sp().getBoolean("resumeOn", false); }
+    static void setResume(boolean on) {   // committed, like setNowPlaying: HomeMode reads it right away
+        sp().edit().putBoolean("resumeOn", on).commit();
+        version++;
+    }
+
     static boolean quotes() { return sp().getBoolean("quotes", Config.SHOW_CRYPTO); }
     static void setQuotes(boolean on) { put("quotes", on); }
 
