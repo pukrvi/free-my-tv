@@ -2,12 +2,12 @@
 
 <img src="docs/assets/icon-512.png" width="96" alt="">
 
-# Free My TV
+# Vibe TV
 
 **A fast, ad-free Android TV home screen tuned for TCL Smart TV Pro (Android 12).**
 
 Remote-first home and settings screens, trending picks from your own apps, and weather at a glance.<br>
-Open source. Built with Claude Code. One button to undo.
+Based on [Free My TV by Simba](https://github.com/simbasjungles/free-my-tv). The app and APK currently retain the Free My TV runtime name.
 
 [**freemytv.io**](https://freemytv.io) · [TCL setup](#tcl-smart-tv-pro-android-12) · [Install](#install) · [Design guide](DESIGN.md) · [LG TVs](#lg-tvs-webos) · [Samsung TVs](#samsung-tvs-tizen)
 
@@ -17,17 +17,20 @@ Open source. Built with Claude Code. One button to undo.
 
 ## What you get
 
+The primary home described below is **Vibe TV 1**. Simba preserves the original upstream layout; Lamplight is a separate design.
+
 - **No ads.** No sponsored rows, banners or autoplaying promos. Not one.
 - **Your apps, front and center.** The streaming apps you actually use, on a glass shelf. Pick them and their order right on the TV.
 - **Trending, not sponsored.** Four remote-friendly rows—For You, Anime, Movies, and TV Shows—with fresh picks from apps already on the TV.
 - **Weather and markets, together.** The home card shows current conditions, the next six hours and six days, sunrise and sunset, and crypto prices without a forecast-range chooser.
 - **What's playing.** Music, a podcast or the radio going on in the background shows on the home screen and the screensaver: the title, the artist and the app, from any app that tells Android what it plays (*Home Settings*, off until you turn it on).
-- **Pick up where you left off.** *Continue Watching* remembers supported playback, with thumbnails and progress when available. Hold OK to remove a card or hide a recommendation. YouTube entries expire after two days; other services after ten. Enable it in *Home Settings* → *Widgets*. See the [current TCL support status](PLAYBACK_STATUS.md), including Netflix, Prime and JioHotstar limits.
+- **Pick up where you left off.** *Continue Watching* remembers supported playback, with thumbnails and progress when available. YouTube and Stremio artwork/progress are verified on this TCL. Netflix and Prime Video use explicit app-level fallback cards when they expose no useful title; exact-title capture and reliable automatic resume remain unresolved. JioHotstar title/progress work, with its app logo as the artwork fallback. Enable it in *Home Settings* → *Widgets*; see [current TCL playback support](PLAYBACK_STATUS.md).
 - **Light by day, dark by night.** It follows your city's real sunset, the way your phone does.
 - **A screensaver to match.** Full-screen photos of the picks with a big glass clock. Optionally (*Watch from the screensaver*, in Home Settings), OK opens the title on screen in its app, and any other button just closes it.
 - **Your own photos** (Google TV and Android TV). Send them from your computer (up to 100): the screensaver shows them, and without picks one is the home screen's background each hour.
 - **Lightweight.** A native Android TV app with a Canvas-drawn home screen and remote-first controls.
-- **Settings built for a TV remote.** A left navigation rail updates the spacious right panel as you move through Home Screen, Screensaver, Home Settings, Widgets, Shelf, Top Buttons, Sleep Timer, Remote Buttons, TV Settings, and About this TV. Right or OK enters a section, with its first option ready.
+- **Settings built for a TV remote.** A left navigation column jumps through one continuous settings page. Read and change settings down the right side, moving naturally between sections; short groups reveal the next group below. Right or OK enters the first option, and Back returns to navigation.
+- **Four home choices.** Vibe TV 1 is the primary theme, followed by Simba (Free-My-TV), Lamplight, and Google TV. Vibe TV 1 also lets you reorder or hide home sections.
 - **Safe.** No root. Nothing is uninstalled. One button brings back the factory home screen.
 
 ## TCL Smart TV Pro (Android 12)
@@ -38,9 +41,28 @@ hours and days together; there is no setting to choose one forecast range. For t
 steps, see [the Android TV test runbook](ANDROID_TV_TESTING.md). The general home-screen rules are in
 [DESIGN.md](DESIGN.md).
 
+### Choose your home
+
+Open **Home Settings → Home Screen** to see thumbnail choices in this order:
+
+| Choice | What it provides |
+| --- | --- |
+| **Vibe TV 1** | The primary TCL home: quick actions, weather, app dock, Continue Watching and recommendation shelves. |
+| **Simba (Free-My-TV)** | The original upstream home from commit `90908dc5bce178feb52e9868947cc039c64730fc`, preserving its tabs, hero, dock and drawer. |
+| **Lamplight** | An independently designed additional home, with its own renderer. |
+| **Google TV** | The TV's factory launcher and recovery path, shown last. |
+
+Use Left/Right and Up/Down to browse the thumbnail grid; OK selects a choice. Choosing a custom theme preserves saved settings and playback history. Google TV uses the existing Original restoration mode. Home Settings → Theme still controls the light/dark appearance independently of the home design.
+
+With Vibe TV 1 selected, **Home sections** appears directly below Home Screen in the left navigation. OK shows or hides a section. Hold OK, move it with the arrows, and press OK to keep its position; Back cancels the move. Reset layout restores the default order and visibility after confirmation. This composition editor is exclusive to Vibe TV 1; it does not rearrange Simba or Lamplight. Shelf and Top Buttons remain separate membership/order controls.
+
+Continue Watching retains at most twelve entries: YouTube expires after two days, other services after ten. In the tested Vibe TV 1 home, hold OK on a resume card to remove it, or on a recommendation to hide it from all recommendation shelves. These actions do not clear the streaming app's own history. Theme-specific validation and provider limitations must be reported separately; app launch alone does not prove playback resumed.
+
 ## Install
 
 About ten minutes. You need a Google TV or Android TV (Android 8 or newer) and a computer on the same Wi-Fi.
+
+Build this repository for the Vibe TV theme picker and TCL customizations. The prebuilt release links and LG/Samsung instructions below refer to upstream Free My TV; those packages do not include this fork's new Android theme picker.
 
 ### Build this TCL version
 
@@ -74,7 +96,7 @@ keystore private; the file contains the TMDB key, and updates must use the same 
    > Install Free My TV (github.com/simbasjungles/free-my-tv) on my TV at 192.168.1.50. I live in Lisbon.
 
    It downloads the code, installs the tools it needs, builds the app and puts it on your TV, and asks before anything important. Swap in your TV's IP and your city.
-3. **On the TV**, open *Free My TV* → *Home Screen* → *Free My TV*. That's when the TV asks *Allow USB debugging?* for Free My TV: tick *Always allow* and accept.
+3. **On the TV**, open *Free My TV* → *Home Screen* and select *Vibe TV 1* in this build (or *Free My TV* in an upstream release). That's when the TV asks *Allow USB debugging?* for Free My TV: tick *Always allow* and accept.
 
 ### The ready APK
 
@@ -118,7 +140,7 @@ If you built Free My TV yourself before, switch back to *Original* and uninstall
    ```bash
    adb shell "appops set io.freemytv AUTO_START allow || appops set io.freemytv APP_AUTO_START allow"
    ```
-5. **On the TV**, open *Free My TV* → *Home Screen* → *Free My TV*. The TV asks *Allow USB debugging?* once more, now for Free My TV itself: tick *Always allow* and accept. (Run `adb disconnect 192.168.1.50:5555` first: on Android 8 to 10 the TV can hand that answer to a computer that's still connected.)
+5. **On the TV**, open *Free My TV* → *Home Screen* → *Vibe TV 1*. The TV asks *Allow USB debugging?* once more, now for Free My TV itself: tick *Always allow* and accept. (Run `adb disconnect 192.168.1.50:5555` first: on Android 8 to 10 the TV can hand that answer to a computer that's still connected.)
 
 ## LG TVs (webOS)
 
@@ -209,9 +231,9 @@ They land in the app's own folder on the TV (no permission needed); on Android 1
 
 ## Going back
 
-On the TV: *Free My TV* → *Home Screen* → *Original*. The factory home screen, screensaver and every app come back exactly as they were. If the new home screen ever crashes three times in five minutes, it switches back by itself.
+On this TCL build: *Free My TV* → *Home Screen* → *Google TV*, the last thumbnail. This invokes Original recovery mode and restores the factory home screen, screensaver and apps. If the custom home screen crashes three times in five minutes, the watchdog switches back automatically. Upstream releases may label the same recovery action *Original*.
 
-To remove it for good, switch to *Original* first, then uninstall *Free My TV* (Settings → Apps). Uninstalled it while it was on? Install it again and pick *Original*: the list of what it turned off is kept in the TV's settings, so everything comes back.
+To remove this version, select *Google TV* first, then uninstall *Free My TV* (Settings → Apps). If it was uninstalled while active, reinstall it and select *Google TV* to run Original recovery; the restore list is kept in the TV's settings.
 
 ## What it changes
 
@@ -226,7 +248,7 @@ To remove it for good, switch to *Original* first, then uninstall *Free My TV* (
   - Google Assistant, only with `disable_assistant=true`.
 - On Google TV, the Assistant's results for films and shows come from Google TV's home app, which is off in Free My TV mode: asking it to play a show can end in "Sorry, I don't understand", and a search can show only YouTube videos. Opening apps, questions and apps' own voice search (YouTube's, for one) still work; *Original* brings it all back.
 - On TCL TVs, the remote's Netflix, YouTube and Prime buttons keep working through a small accessibility service that only reads those buttons. Pick what each one opens in *Free My TV* → *Remote Buttons*; *Original* turns the service off. On Vestel-made TVs (F&U and other store brands) and Xiaomi (Formovie) projectors the same goes for the Netflix button, and on KTC-made TVs (NextStar) for the Tabii button. On Sony TVs, the BRAVIA CORE, Netflix, Disney+, Prime Video, YouTube and Crunchyroll buttons (and Google Play, on remotes that have it) can each open the app you pick, or keep Sony's default. On Xiaomi TVs whose remote has a Mi button instead of Home, that button opens Free My TV instead of PatchWall (or, if you pick it, PatchWall as before, or another app). On Xiaomi TVs, the YouTube button opens YouTube again (Google TV's home screen answered it), and the PatchWall button can open the app you pick. On Xiaomi TVs sold in Russia, the same goes for the Okko, VK, Rutube, KION, Wink and IVI buttons, which keep Xiaomi's default until you pick another app. On Hisense TVs, the Prime Video, YouTube, Disney+, All Apps, Settings and profile buttons, which Google TV's home screen answered, open what you pick (All Apps opens Free My TV's own; Netflix stays with the TV).
-- With *Home Settings* → *Now Playing widget* on (it starts off), what an app is playing shows in place of the prices while it plays, on the home screen and the screensaver. Android hands that only to a notification listener, so turning the widget on allows ours through the TV's ADB; turning it off, *Original* and the switch back after crashes take it away. Where the TV refuses it, the row says so.
+- With *Home Settings* → *Widgets* → *Now Playing widget* on (it starts off), supported apps' live media information appears on the home screen and screensaver. It shares Android's listener permission with Continue Watching; disabling one feature does not revoke access while the other still needs it. Original recovery and the watchdog revoke that access. Where the TV refuses permission, the row explains why.
 - On HY300 projectors, whose stock home screen was the only way to them, the bottom drawer gets *Keystone* (keystone, zoom and projection mode) and *Screen Mirroring* (the projector's Miracast receiver), and HDMI opens through the projector's own player.
 - *Free My TV* → *Sleep Timer* turns the TV off after 5 minutes to 4 hours, with the minutes left over any app (top center, or the corner you pick). It presses the remote's Sleep key through the TV's own ADB, so it works in Free My TV mode; *Original* stops it.
 - Picture, sound, inputs, remote pairing, Google services and the Play Store are on a protected list, checked before every change, and so are Android's own pieces and factory menus. Before anything goes off, the TV is asked whether its inputs or its remote's Input key depend on it; those stay on.
@@ -315,6 +337,7 @@ No accounts, no analytics, no tracking. The app talks to TMDB, Open-Meteo (with 
 
 ## Credits
 
+- Vibe TV is based on [Free My TV by Simba](https://github.com/simbasjungles/free-my-tv). The selectable **Simba (Free-My-TV)** design preserves the original upstream home at commit `90908dc5bce178feb52e9868947cc039c64730fc`.
 - Built with [Claude Code](https://claude.com/claude-code).
 - The LG version builds on what [@danielthejoker18](https://github.com/danielthejoker18) found in [FreeMyTvWebOS](https://github.com/danielthejoker18/FreeMyTvWebOS) (MIT): installing through Developer Mode and opening apps through the TV's service bus.
 - On Samsung TVs it installs with [TizenBrew Installer](https://github.com/reisxd/TizenBrewInstaller) by [@reisxd](https://github.com/reisxd).

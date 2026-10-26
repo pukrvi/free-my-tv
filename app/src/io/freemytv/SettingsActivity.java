@@ -140,12 +140,12 @@ public class SettingsActivity extends Activity {
 
     static final class SettingsView extends View implements Choreographer.FrameCallback {
         /** The sections, top to bottom on the rail; the panel on the right shows the focused one. */
-        private static final int SECTIONS = 10;
-        private static final int SEC_HOME = 0, SEC_SAVER = 1, SEC_GENERAL = 2, SEC_WIDGETS = 3, SEC_SHELF = 4,
-                SEC_TOP = 5, SEC_SLEEP = 6, SEC_KEYS = 7, SEC_TV = 8, SEC_ABOUT = 9;
+        private static final int SECTIONS = 11;
+        private static final int SEC_HOME = 0, SEC_LAYOUT = 1, SEC_SAVER = 2, SEC_GENERAL = 3, SEC_WIDGETS = 4, SEC_SHELF = 5,
+                SEC_TOP = 6, SEC_SLEEP = 7, SEC_KEYS = 8, SEC_TV = 9, SEC_ABOUT = 10;
         private static final int ZONE_RAIL = 0, ZONE_PANEL = 1;
         /** Geometry in 1080p units, scaled by k. */
-        private static final float RAIL_ITEM_L = 100, RAIL_ITEM_R = 450, RAIL_ITEM_H = 56, RAIL_PITCH = 68, RAIL_TOP = 252;
+        private static final float RAIL_ITEM_L = 100, RAIL_ITEM_R = 450, RAIL_ITEM_H = 56, RAIL_PITCH = 62, RAIL_TOP = 252;
         private static final float PANEL_L = 510, PANEL_R = 1840;
         private static final float ROW_INSET = 24, TEXT_INSET = 30;
         private static final float ROWS_TOP = 190, ROW_H = 68, ROW_GAP = 8, CHOICE_H = 104;
@@ -153,7 +153,7 @@ public class SettingsActivity extends Activity {
         private static final long HOLD_MS = 500;
         private static final int AMBER = 0xFFFFC266, INK = 0xFF1C1C1E;
         /** RAIL_SYMBOLS[i] is the symbol of section i (Symbols assets). */
-        private static final String[] RAIL_SYMBOLS = {"home", "bedtime", "tune", "widgets", "apps", "toolbar", "schedule",
+        private static final String[] RAIL_SYMBOLS = {"home", "tune", "bedtime", "tune", "widgets", "apps", "toolbar", "schedule",
                 "settings_remote", "tv_settings", "info"};
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
         /** The list picker: what it was opened for (a key's index + 1, or one of the PICK_… constants below). */
@@ -209,6 +209,8 @@ public class SettingsActivity extends Activity {
         }
         private final Paint divider = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pageSurface = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final HomeThemeThumbs themeThumbs = new HomeThemeThumbs();
+        private List<String> layoutOrder = new ArrayList<>();
         private long startedAt, lastNanos, pendingAt;
         private boolean animateScroll = true;
         private int w, h;
@@ -270,7 +272,7 @@ public class SettingsActivity extends Activity {
                         for (int i = 0; i < panelRows(); i++) out.add(1_000_000 + i);
                         return;
                     }
-                    for (int i = 1; i <= SECTIONS; i++) out.add(i);
+                    for (int i = 1; i <= SECTIONS; i++) if (sectionPresent(i - 1)) out.add(i);
                     for (int group = 0; group < SECTIONS; group++) {
                         for (int row = 0; row < rowsInSection(group); row++) {
                             if (documentRowBounds(group, row, null)) out.add(contentId(group, row));
@@ -327,6 +329,7 @@ public class SettingsActivity extends Activity {
                 @Override public boolean holdable(int id) {
                     if (id < 1000 || id >= 1_000_000 || picking || lifted) return false;
                     int group = id / 1000 - 1, row = id % 1000;
+                    if (group == SEC_LAYOUT) return row < HomeSections.keys().length;
                     if (group != SEC_SHELF && group != SEC_TOP) return false;
                     EditorData data = editors[group == SEC_TOP ? 1 : 0];
                     return row < data.rows.size() && data.order.contains(data.rows.get(row)[0]);
@@ -342,7 +345,7 @@ public class SettingsActivity extends Activity {
             final int group = section, row = focus, from = scroll;
             final boolean top = editingTop, wasLifted = lifted;
             final List<String[]> rows = shelfRows;
-            final List<String> order = shelfOrder;
+            final List<String> order = shelfOrder, layout = layoutOrder;
             void restore() {
                 section = group;
                 focus = row;
@@ -351,17 +354,24 @@ public class SettingsActivity extends Activity {
                 lifted = wasLifted;
                 shelfRows = rows;
                 shelfOrder = order;
+                layoutOrder = layout;
                 whyRows = null;
             }
         }
 
         private boolean documentRowBounds(int group, int row, Rect out) {
-            if (group < 0 || group >= SECTIONS || row < 0 || row >= rowsInSection(group)) return false;
+            if (group < 0 || group >= SECTIONS || !sectionPresent(group) || row < 0 || row >= rowsInSection(group)) return false;
             float height = rowHeight(group, row);
             float top = PAGE_TOP + sectionTops[group] + rowTop(group, row) - pageOffset;
             if (top < PAGE_TOP || top + height > PAGE_BOTTOM) return false;
-            if (out != null) out.set(Math.round((PANEL_L + ROW_INSET) * k), Math.round(top * k),
-                    Math.round((PANEL_R - ROW_INSET) * k), Math.round((top + height) * k));
+            float left = PANEL_L + ROW_INSET, right = PANEL_R - ROW_INSET;
+            if (group == SEC_HOME) {
+                float width = (right - left - 24) / 2;
+                left += (row % 2) * (width + 24);
+                right = left + width;
+            }
+            if (out != null) out.set(Math.round(left * k), Math.round(top * k),
+                    Math.round(right * k), Math.round((top + height) * k));
             return true;
         }
 
@@ -373,7 +383,7 @@ public class SettingsActivity extends Activity {
 
         /** The sections, on the rail and as the panel's title. */
         private String[] sectionLabels() {
-            return new String[] {Ui.tr("Home Screen"), Ui.tr("Screensaver"), Ui.tr("Home Settings"), Ui.tr("Widgets"),
+            return new String[] {Ui.tr("Home Screen"), Ui.tr("Home sections"), Ui.tr("Screensaver"), Ui.tr("Home Settings"), Ui.tr("Widgets"),
                     Ui.tr("Shelf"), Ui.tr("Top Buttons"), Ui.tr("Sleep Timer"), Ui.tr("Remote Buttons"),
                     Ui.tr("TV Settings"), Ui.tr("About this TV")};
         }
@@ -394,7 +404,8 @@ public class SettingsActivity extends Activity {
         private int panelRows() {
             if (picking) return Math.min(PANEL_VISIBLE, pickLabels.size());
             switch (section) {
-                case SEC_HOME: return 2;
+                case SEC_HOME: return 4;
+                case SEC_LAYOUT: return layoutOrder.size() + 1;
                 case SEC_SAVER: return saverLabels().length;
                 case SEC_GENERAL: return 4;
                 case SEC_WIDGETS: return widgetsLabels().length;
@@ -479,6 +490,7 @@ public class SettingsActivity extends Activity {
         /** Labels and values for the plain list sections (every one but Home, Shelf and Top Buttons). */
         private String[] rowLabels() {
             switch (section) {
+                case SEC_LAYOUT: return layoutLabels();
                 case SEC_SAVER: return saverLabels();
                 case SEC_GENERAL: return generalLabels();
                 case SEC_WIDGETS: return widgetsLabels();
@@ -491,6 +503,7 @@ public class SettingsActivity extends Activity {
 
         private String[] rowValues() {
             switch (section) {
+                case SEC_LAYOUT: return layoutValues();
                 case SEC_SAVER: return saverValues();
                 case SEC_GENERAL: return generalValues();
                 case SEC_WIDGETS: return widgetsValues();
@@ -529,16 +542,17 @@ public class SettingsActivity extends Activity {
                 return pickLabels.get(at) + (at == pickCurrent ? Ui.tr(", selected") : "")
                         + ", " + Ui.trf("{i} of {n}", "i", at + 1, "n", pickLabels.size());
             }
+            if (lifted && row == focus && section == SEC_LAYOUT) {
+                return layoutLabels()[row] + ", " + Ui.tr("Hold OK to move it.");
+            }
             if (lifted && row == focus) {
                 String[] app = shelfRows.get(scroll + row);
                 int place = shelfOrder.indexOf(app[0]);
                 return Ui.trf("Moving {app}, position {n} of {total}", "app", app[1], "n", place + 1, "total", shelfOrder.size());
             }
             if (section == SEC_HOME) {
-                String name = row == 0 ? "Free My TV, " + Ui.tr("no ads, with the new screensaver")
-                        : Ui.tr("Original") + ", " + Ui.tr("the TV's factory home screen");
-                boolean inUse = (row == 0) == freeActive();
-                return name + (inUse ? Ui.tr(". In use") : "") + ", " + Ui.trf("{i} of {n}", "i", row + 1, "n", 2);
+                return HomeThemeThumbs.NAMES[row] + ", " + themeDescription(row)
+                        + (homeChoiceActive(row) ? Ui.tr(". In use") : "");
             }
             if (section == SEC_SHELF || section == SEC_TOP) {
                 int at = scroll + row;
@@ -829,7 +843,7 @@ public class SettingsActivity extends Activity {
                     if (lifted) {
                         moveShelfApp(direction);
                     } else if (zone == ZONE_RAIL) {
-                        int next = Math.max(0, Math.min(SECTIONS - 1, focus + direction));
+                        int next = nextRail(focus, direction);
                         if (next != focus) previewSection(next);
                     } else if (picking) {
                         if (direction < 0) {
@@ -852,6 +866,10 @@ public class SettingsActivity extends Activity {
                         moveShelfApp(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                     } else if (zone == ZONE_RAIL) {
                         if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT) selectSection(focus);
+                    } else if (section == SEC_HOME && e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT && focus % 2 == 0) {
+                        focus++;
+                    } else if (section == SEC_HOME && e.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT && focus % 2 == 1) {
+                        focus--;
                     } else if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT) {
                         zone = ZONE_RAIL;
                         focus = section;
@@ -883,6 +901,8 @@ public class SettingsActivity extends Activity {
                                 handler.removeCallbacks(holdStart);
                                 handler.postDelayed(holdStart, HOLD_MS);
                             }
+                        } else if (okDown && holdArmed && e.isLongPress()) {
+                            startLift();
                         }
                     } else {
                         handler.removeCallbacks(holdStart);
@@ -921,6 +941,7 @@ public class SettingsActivity extends Activity {
 
         /** Whether holding OK on the focused row lifts it (the editors, on an app that's already in). */
         private boolean canHold() {
+            if (section == SEC_LAYOUT) return focus >= 0 && focus < layoutOrder.size();
             if (section != SEC_SHELF && section != SEC_TOP) return false;
             if (focus >= panelRows() || scroll + focus >= shelfRows.size()) return false;
             return shelfOrder.contains(shelfRows.get(scroll + focus)[0]) && unavailable(focus) == null;
@@ -951,16 +972,40 @@ public class SettingsActivity extends Activity {
             }
             switch (section) {
                 case SEC_HOME: {
-                    boolean wantFree = focus == 0;
-                    boolean already = wantFree ? freeActive() : HomeMode.ORIGINAL.equals(state.optString("mode", HomeMode.ORIGINAL));
-                    if (!already && !busy()) {
-                        HomeMode.request(c, wantFree ? HomeMode.FREE : HomeMode.ORIGINAL);
+                    if (busy()) return;
+                    boolean system = focus == 3;
+                    if (!system) Prefs.setHomeDesign(HomeThemeThumbs.IDS[focus]);
+                    if (system && freeActive()) {
+                        HomeMode.request(c, HomeMode.ORIGINAL);
+                        pendingAt = SystemClock.uptimeMillis();
+                    } else if (!system && !freeActive()) {
+                        HomeMode.request(c, HomeMode.FREE);
                         pendingAt = SystemClock.uptimeMillis();
                     }
+                    updateDocumentGeometry();
                     invalidate();
                     spoken.focusMoved();
                     return;
                 }
+                case SEC_LAYOUT:
+                    if (focus == layoutOrder.size()) {
+                        new AlertDialog.Builder(activity).setTitle(Ui.tr("Reset layout"))
+                                .setMessage(Ui.tr("Restore the default section order and visibility?"))
+                                .setPositiveButton(Ui.tr("Reset layout"), (dialog, which) -> {
+                                    HomeSections.reset(c);
+                                    layoutOrder = HomeSections.order(c);
+                                    focus = 0;
+                                    whyRows = null;
+                                    invalidate();
+                                }).setNegativeButton(Ui.tr("Cancel"), null).show();
+                    } else {
+                        String key = layoutOrder.get(focus);
+                        if (!HomeSections.setVisible(c, key, !HomeSections.visible(c, key))) {
+                            Toast.makeText(c, Ui.tr("Keep at least one section visible."), Toast.LENGTH_SHORT).show();
+                        }
+                        invalidate();
+                    }
+                    return;
                 case SEC_SAVER: {
                     boolean photos = !Photos.files(getContext()).isEmpty();
                     if (focus == 0) {
@@ -1052,7 +1097,8 @@ public class SettingsActivity extends Activity {
         }
 
         private void moveContent(int direction) {
-            int next = focus + direction;
+            int step = section == SEC_HOME ? 2 * direction : direction;
+            int next = focus + step;
             if (next >= 0 && next < panelRows()) {
                 focus = next;
                 return;
@@ -1060,7 +1106,7 @@ public class SettingsActivity extends Activity {
             int destination = section + direction;
             while (destination >= 0 && destination < SECTIONS) {
                 bindSection(destination);
-                if (panelRows() > 0) {
+                if (sectionPresent(destination) && panelRows() > 0) {
                     focus = direction > 0 ? 0 : panelRows() - 1;
                     scroll = 0;
                     whyRows = null;
@@ -1073,8 +1119,20 @@ public class SettingsActivity extends Activity {
             focus = direction > 0 ? Math.max(0, panelRows() - 1) : 0;
         }
 
+        private boolean sectionPresent(int group) {
+            return group != SEC_LAYOUT || "vibe".equals(Prefs.homeDesign());
+        }
+
+        private int nextRail(int from, int direction) {
+            for (int next = from + direction; next >= 0 && next < SECTIONS; next += direction) {
+                if (sectionPresent(next)) return next;
+            }
+            return from;
+        }
+
         private void bindSection(int to) {
             section = to;
+            if (to == SEC_LAYOUT) layoutOrder = HomeSections.order(getContext());
             if (to == SEC_SHELF || to == SEC_TOP) {
                 editingTop = to == SEC_TOP;
                 EditorData data = editors[editingTop ? 1 : 0];
@@ -1085,7 +1143,8 @@ public class SettingsActivity extends Activity {
 
         private int rowsInSection(int at) {
             switch (at) {
-                case SEC_HOME: return 2;
+                case SEC_HOME: return 4;
+                case SEC_LAYOUT: return HomeSections.keys().length + 1;
                 case SEC_SAVER: return saverLabels().length;
                 case SEC_GENERAL: return 4;
                 case SEC_WIDGETS: return widgetsLabels().length;
@@ -1099,12 +1158,13 @@ public class SettingsActivity extends Activity {
         }
 
         private float rowHeight(int group, int row) {
-            if (group == SEC_HOME) return CHOICE_H;
+            if (group == SEC_HOME) return 220;
             if (group == SEC_ABOUT && row >= 2) return row == 2 ? 188 : row == 3 ? 144 : 150;
             return ROW_H;
         }
 
         private float rowTop(int group, int row) {
+            if (group == SEC_HOME) return SECTION_HEAD + (row / 2) * 244;
             float top = SECTION_HEAD;
             for (int i = 0; i < row; i++) top += rowHeight(group, i) + ROW_GAP;
             return top;
@@ -1114,9 +1174,10 @@ public class SettingsActivity extends Activity {
             float top = 0;
             for (int i = 0; i < SECTIONS; i++) {
                 sectionTops[i] = top;
+                if (!sectionPresent(i)) { sectionHeights[i] = 0; continue; }
                 int rows = rowsInSection(i);
                 float body = rowTop(i, rows) - SECTION_HEAD;
-                float footer = i == SEC_SHELF || i == SEC_TOP ? 108 : i == SEC_HOME || i == SEC_TV ? 0 : 64;
+                float footer = i == SEC_SHELF || i == SEC_TOP || i == SEC_LAYOUT ? 108 : i == SEC_HOME || i == SEC_TV ? 0 : 64;
                 if (rows == 0) footer += ROW_H;
                 if (i == SEC_HOME) {
                     if (busy()) footer = 100;
@@ -1411,6 +1472,17 @@ public class SettingsActivity extends Activity {
 
         /** While lifted, ↑ ↓ : moves the app one place earlier or later. */
         private void moveShelfApp(int dir) {
+            if (section == SEC_LAYOUT) {
+                int to = focus + dir;
+                if (to < 0 || to >= layoutOrder.size()) return;
+                String key = layoutOrder.remove(focus);
+                layoutOrder.add(to, key);
+                focus = to;
+                HomeSections.setOrder(getContext(), layoutOrder);
+                revealFocusedRow();
+                invalidate();
+                return;
+            }
             String pkg = shelfRows.get(scroll + focus)[0];
             int at = shelfOrder.indexOf(pkg), to = at + dir;
             if (at < 0 || to < 0 || to >= shelfOrder.size()) return;
@@ -1425,7 +1497,7 @@ public class SettingsActivity extends Activity {
             holdArmed = false;
             if (lifted || picking || !canHold()) return;
             liftSaved.clear();
-            liftSaved.addAll(shelfOrder);
+            liftSaved.addAll(section == SEC_LAYOUT ? layoutOrder : shelfOrder);
             lifted = true;
             lift.target = 1;
             whyRows = null;
@@ -1444,6 +1516,15 @@ public class SettingsActivity extends Activity {
 
         /** Back while lifted: the order goes back to what it was before the lift. */
         private void cancelLift() {
+            if (section == SEC_LAYOUT) {
+                String key = layoutOrder.get(focus);
+                HomeSections.setOrder(getContext(), liftSaved);
+                layoutOrder = HomeSections.order(getContext());
+                focus = Math.max(0, layoutOrder.indexOf(key));
+                revealFocusedRow();
+                dropLift();
+                return;
+            }
             String pkg = shelfRows.get(scroll + focus)[0];
             shelfOrder.clear();
             shelfOrder.addAll(liftSaved);
@@ -1565,8 +1646,10 @@ public class SettingsActivity extends Activity {
             c.drawText(Ui.tr("Home Settings"), 100 * k, 185 * k, version);
             version.setTextAlign(Paint.Align.CENTER);
             String[] labels = sectionLabels();
+            int visibleIndex = 0;
             for (int i = 0; i < SECTIONS; i++) {
-                float top = RAIL_TOP + i * RAIL_PITCH;
+                if (!sectionPresent(i)) continue;
+                float top = RAIL_TOP + visibleIndex++ * RAIL_PITCH;
                 rowRect.set(RAIL_ITEM_L * k, top * k, RAIL_ITEM_R * k, (top + RAIL_ITEM_H) * k);
                 float f = drawRowBackground(c, i, 0);
                 String why = railWhy(i);
@@ -1596,7 +1679,7 @@ public class SettingsActivity extends Activity {
             int activeSection = section, activeFocus = focus, activeScroll = scroll;
             boolean activeTop = editingTop, activeLifted = lifted;
             List<String[]> activeRows = shelfRows;
-            List<String> activeOrder = shelfOrder;
+            List<String> activeOrder = shelfOrder, activeLayout = layoutOrder;
             drawingFocusSection = activeSection;
             drawingFocusRow = activeFocus;
             c.save();
@@ -1604,7 +1687,7 @@ public class SettingsActivity extends Activity {
             try {
                 for (int i = 0; i < SECTIONS; i++) {
                     float top = PAGE_TOP + sectionTops[i] - pageOffset;
-                    if (top + sectionHeights[i] < PAGE_TOP || top > PAGE_BOTTOM) continue;
+                    if (!sectionPresent(i) || top + sectionHeights[i] < PAGE_TOP || top > PAGE_BOTTOM) continue;
                     bindSection(i);
                     drawingSection = i;
                     lifted = activeLifted && i == activeSection;
@@ -1634,6 +1717,7 @@ public class SettingsActivity extends Activity {
                 lifted = activeLifted;
                 shelfRows = activeRows;
                 shelfOrder = activeOrder;
+                layoutOrder = activeLayout;
                 drawingSection = -1;
                 whyRows = null;
                 c.restore();
@@ -1688,55 +1772,79 @@ public class SettingsActivity extends Activity {
         }
 
         /** Home Screen: the two picks, then how they compare, the picks' status and the last notices. */
+        private boolean homeChoiceActive(int index) {
+            return index == 3 ? !freeActive() : freeActive() && HomeThemeThumbs.IDS[index].equals(Prefs.homeDesign());
+        }
+
+        private String themeDescription(int index) {
+            switch (index) {
+                case 0: return Ui.tr("Your home, with customizable sections.");
+                case 1: return Ui.tr("The original Simba home layout.");
+                case 2: return Ui.tr("An independent Impeccable design.");
+                default: return Ui.tr("The TV's factory home screen");
+            }
+        }
+
         private void drawHomePanel(Canvas c, float hx, float seconds) {
-            boolean working = busy();
-            String busyText = busyText();
-            String[][] cards = {{"Free My TV", working ? (busyText.isEmpty() ? Ui.tr("Starting…") : busyText)
-                    : Ui.tr("no ads, with the new screensaver")},
-                    {Ui.tr("Original"), Ui.tr("The TV's factory home screen")}};
-            int current = freeActive() ? 0 : 1;
-            for (int i = 0; i < 2; i++) {
-                rowRectAt(i, CHOICE_H);
+            float width = (PANEL_R - PANEL_L - 2 * ROW_INSET - 24) / 2;
+            for (int i = 0; i < 4; i++) {
+                float left = PANEL_L + ROW_INSET + (i % 2) * (width + 24);
+                float top = ROWS_TOP + (i / 2) * 244;
+                rowRect.set(left * k, top * k, (left + width) * k, (top + 220) * k);
                 if (c.quickReject(rowRect, Canvas.EdgeType.AA)) continue;
                 float f = drawRowBackground(c, SECTIONS + i, 0);
+                RectF art = new RectF((left + 16) * k, (top + 20) * k, (left + 288) * k, (top + 173) * k);
+                themeThumbs.draw(c, art, i);
                 rowLabel.setColor(blend(0xF2FFFFFF, INK, f));
-                rowSub.setColor(blend(working && i == 0 ? 0xD9FFFFFF : 0x8CFFFFFF, 0x991C1C1E, f));
-                c.drawText(cards[i][0], rowRect.left + TEXT_INSET * k, rowRect.top + 46 * k, rowLabel);
-                String sub = TextUtils.ellipsize(cards[i][1], new TextPaint(rowSub), 1000 * k, TextUtils.TruncateAt.END).toString();
-                c.drawText(sub, rowRect.left + TEXT_INSET * k, rowRect.top + 84 * k, rowSub);
-                if (i == current && !working) {
-                    float cw = Symbols.width(getContext(), "check", 26 * k);
-                    Symbols.draw(getContext(), c, "check", rowRect.right - TEXT_INSET * k - cw / 2, rowRect.centerY(), 26 * k, blend(0xFFFFFFFF, INK, f));
-                }
-                if (working && i == 0) {
-                    spinner.setColor(blend(0xFFFFFFFF, INK, f));
-                    Ui.spinner(c, rowRect.right - TEXT_INSET * k - 12 * k, rowRect.centerY(), 12 * k, seconds * 1.3f, spinner);
-                }
-            }
-            float y = (ROWS_TOP + 2 * (CHOICE_H + ROW_GAP) + 44) * k;
-            if (working) {
-                c.drawText(Ui.tr("Switching takes a few seconds; the screen blinks while it measures."), hx, y, hint);
-                y += 46 * k;
-                if (busyText.equals(Ui.tr("Accept “Allow USB debugging?” on the TV (tick “Always allow”)."))) {
-                    c.drawText(Ui.tr("On the TV: tick “Always allow” and press OK."), hx, y, warn);
-                    y += 46 * k;
-                }
-            } else if (!state.optString("error").isEmpty()) {
-                // The whole message, on up to five lines: some say what to do (the Wi-Fi one, #14).
-                String error = state.optString("error");
-                int width = Math.round((PANEL_R - PANEL_L - 2 * ROW_INSET - 2 * TEXT_INSET) * k);
-                if (errorLayout == null || !error.equals(errorShown) || errorLayout.getWidth() != width) {
-                    errorShown = error;
-                    errorLayout = StaticLayout.Builder.obtain(error, 0, error.length(), new TextPaint(warn), width)
-                            .setMaxLines(5).setEllipsize(TextUtils.TruncateAt.END).build();
-                }
+                rowSub.setColor(blend(0xB3FFFFFF, 0xB31C1C1E, f));
+                rowLabel.setTextSize(26 * k);
+                c.drawText(HomeThemeThumbs.NAMES[i], (left + 308) * k, (top + 55) * k, rowLabel);
+                TextPaint description = new TextPaint(rowSub);
+                int textWidth = Math.max(1, Math.round((width - 332) * k));
+                StaticLayout text = StaticLayout.Builder.obtain(themeDescription(i), 0, themeDescription(i).length(), description, textWidth)
+                        .setMaxLines(3).setEllipsize(TextUtils.TruncateAt.END).build();
                 c.save();
-                c.translate(hx, y - errorLayout.getLineBaseline(0));
-                errorLayout.draw(c);
+                c.translate((left + 308) * k, (top + 78) * k);
+                text.draw(c);
                 c.restore();
-                y += errorLayout.getLineBaseline(errorLayout.getLineCount() - 1) - errorLayout.getLineBaseline(0) + 46 * k;
+                if (homeChoiceActive(i)) Symbols.draw(getContext(), c, "check", (left + width - 34) * k,
+                        (top + 186) * k, 24 * k, blend(0xFFFFFFFF, INK, f));
+                rowLabel.setTextSize(30 * k);
             }
+            if (busy() || !state.optString("error").isEmpty()) {
+                warn.setColor(busy() ? 0xB3FFFFFF : AMBER);
+                String status = busy() ? busyText() : state.optString("error");
+                c.drawText(TextUtils.ellipsize(status, new TextPaint(warn), (PANEL_R - PANEL_L - 80) * k,
+                        TextUtils.TruncateAt.END).toString(), hx, (ROWS_TOP + 530) * k, warn);
+            }
+        }
 
+        private String sectionName(String key) {
+            switch (key) {
+                case "actions": return Ui.tr("Top Buttons");
+                case "weather": return Ui.tr("Weather widget");
+                case "apps": return Ui.tr("Shelf");
+                case "continue": return Ui.tr("Continue Watching");
+                case "for-you": return Ui.tr("For You");
+                case "anime": return Ui.tr("Anime");
+                case "movies": return Ui.tr("Movies");
+                default: return Ui.tr("TV Shows");
+            }
+        }
+
+        private String[] layoutLabels() {
+            List<String> order = layoutOrder.isEmpty() ? HomeSections.order(getContext()) : layoutOrder;
+            String[] labels = new String[order.size() + 1];
+            for (int i = 0; i < order.size(); i++) labels[i] = sectionName(order.get(i));
+            labels[order.size()] = Ui.tr("Reset layout");
+            return labels;
+        }
+
+        private String[] layoutValues() {
+            String[] values = new String[layoutOrder.size() + 1];
+            for (int i = 0; i < layoutOrder.size(); i++) values[i] = "#" + (i + 1) + " · " + onOff(HomeSections.visible(getContext(), layoutOrder.get(i)));
+            values[layoutOrder.size()] = "";
+            return values;
         }
 
         private float drawComparison(Canvas c, float hx, float y) {
@@ -1790,7 +1898,7 @@ public class SettingsActivity extends Activity {
             else if (error.equals(Recs.NO_KNOWN_APPS)) line = Ui.tr("None of the TV's streaming apps can give picks.");
             else if (error.equals(Recs.NO_APPS)) line = Ui.trf("TMDB has none of the TV's apps for tmdb_region={region}.", "region", Recs.REGION);
             else if (!error.isEmpty()) line = Ui.trf("Error: {error}.", "error", error);
-            else if (count > 0) line = Ui.trf("On · {n} titles from the TV's apps, 3 new ones every hour.", "n", count);
+            else if (count > 0) line = Ui.trf("On · {n} titles from the TV's apps.", "n", count);
             else line = Ui.tr("Fetching titles…");
             c.drawText(TextUtils.ellipsize(line, notice, width, TextUtils.TruncateAt.END).toString(), hx, y + 42 * k, notice);
             version.setTextAlign(Paint.Align.LEFT);
@@ -1845,6 +1953,10 @@ public class SettingsActivity extends Activity {
             }
             float hy = (ROWS_TOP + rows * (ROW_H + ROW_GAP) + 36) * k;
             switch (section) {
+                case SEC_LAYOUT:
+                    c.drawText(Ui.tr("OK shows or hides a section."), hx, hy, hint);
+                    c.drawText(lifted ? Ui.tr("↑ ↓ to move · OK to drop · Back to cancel") : Ui.tr("Hold OK to move it."), hx, hy + 34 * k, hint);
+                    break;
                 case SEC_SAVER:
                     if (Photos.files(getContext()).isEmpty()) {
                         c.drawText(Ui.tr("Send them from a computer: see “Your own photos” in the README."), hx, hy, hint);
@@ -1909,7 +2021,7 @@ public class SettingsActivity extends Activity {
             }
             float hy = (ROWS_TOP + rows * (ROW_H + ROW_GAP) + 36) * k;
             if (lifted) {
-                c.drawText(Ui.tr("← → to move · OK to drop · Back to cancel"), hx2(), hy, hint);
+                c.drawText(Ui.tr("↑ ↓ to move · OK to drop · Back to cancel"), hx2(), hy, hint);
             } else {
                 c.drawText(editingTop ? Ui.tr("OK adds or removes a button.")
                         : HomeApps.maxShelf(getContext()) == Integer.MAX_VALUE ? Ui.tr("OK adds or removes an app.")
@@ -1936,7 +2048,9 @@ public class SettingsActivity extends Activity {
         // MARK: - TalkBack's bounds
 
         private RectF railBox(int i) {
-            float top = RAIL_TOP + i * RAIL_PITCH;
+            int visibleIndex = 0;
+            for (int at = 0; at < i; at++) if (sectionPresent(at)) visibleIndex++;
+            float top = RAIL_TOP + visibleIndex * RAIL_PITCH;
             focusBox.set(RAIL_ITEM_L * k, top * k, RAIL_ITEM_R * k, (top + RAIL_ITEM_H) * k);
             return focusBox;
         }
@@ -1945,7 +2059,13 @@ public class SettingsActivity extends Activity {
             float height = picking ? ROW_H : rowHeight(section, row);
             float top = picking ? ROWS_TOP + row * (height + ROW_GAP)
                     : PAGE_TOP + sectionTops[section] + rowTop(section, row) - pageOffset;
-            rowRect.set((PANEL_L + ROW_INSET) * k, top * k, (PANEL_R - ROW_INSET) * k, (top + height) * k);
+            float left = PANEL_L + ROW_INSET, right = PANEL_R - ROW_INSET;
+            if (!picking && section == SEC_HOME) {
+                float width = (right - left - 24) / 2;
+                left += (row % 2) * (width + 24);
+                right = left + width;
+            }
+            rowRect.set(left * k, top * k, right * k, (top + height) * k);
             return rowRect;
         }
     }

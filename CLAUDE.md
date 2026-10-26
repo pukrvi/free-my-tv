@@ -36,19 +36,16 @@ before you do it, and let them do the taps on the TV.
 
 ## User's TCL Android TV
 
-This is the user's TCL Smart TV Pro running Android 12 and is the target for the Android home and settings design. Its
-remote-first reference layout is 1920 × 1080. For its address, build/install steps, screenshot sequence and visual
-acceptance checks, follow [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). Use that procedure only when a task calls for
-device verification or installation; otherwise ask first. If the saved address no longer connects, ask the user to
-confirm its current address. When another task is using the TV, wait for its handoff before sending input or installing.
+The current Android design target is the TCL Smart TV Pro running Android 12. Its launcher UI is remote-first and uses a
+1920 × 1080 reference layout. For the saved device address, one-build/one-install workflow, screenshot sequence, and
+privacy requirements, follow [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). Settings changes belong on `settings-nav`;
+preserve home-screen work in its own branch and integrate only after that work is complete.
 
-- Keep TV-specific project configuration in the repository and PII in the user's local-only environment file. Read only
-  values needed for a task; never print the environment file or commit it.
-- `config.properties` contains the private TMDB key. Never read, print, or commit that file; preserve the secret and
-  use the existing build flow.
-- The TCL launcher uses `APP_AUTO_START` for boot integration; preserve its existing permission. Home Screen and
-  Original must remain available as the recovery path. Do not change picture, sound, network, or account settings in
-  Android Settings.
+- The TV uses `APP_AUTO_START` for TCL's background-start permission; it must remain allowed for the boot integration.
+- Never read, print, or commit `config.properties`. Use the existing build flow and keep local configuration and
+  signing material private.
+- Settings must keep Home Screen and Original available as the recovery path. Do not change picture, sound, network, or
+  account settings in the TV's own Settings app.
 
 ## Installing it for someone
 
@@ -317,17 +314,16 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   button has nothing to open without `launcherx`. Hisense keeps only error logs: `adb shell setprop log.tag.FreeMyTV I`
   before reading `adb logcat -s FreeMyTV`.
   `adb shell input keyevent` doesn't test any of these: injected keys skip the accessibility key filter.
-- For Continue Watching integration or support claims, read [PLAYBACK_STATUS.md](PLAYBACK_STATUS.md) first: it records
-  the verified provider behavior, unresolved metadata limits and the latest device checks.
-- What's playing (`NowPlaying`) comes from media sessions through an allowed notification listener. Home Settings'
-  *Now Playing widget* and *Continue Watching* share that permission; `HomeMode.nowPlayingAccess` reconciles it under
-  `RUN`, and *Original*/watchdog revoke it. The listener stays bound in `:home` and observes sessions while other apps
-  play, because Netflix and other players may discard metadata before Home resumes. It reads no notification bodies.
-  `Resume` stores private history separately from `Prefs` and keeps artwork bounded in memory; YouTube entries expire
-  after two days and other services after ten. Dismissed/expired paused sessions must not recreate cards. Generic
-  Netflix/Prime metadata becomes an explicit app-level resume card; other generic app-name metadata is skipped. Artwork uses session bitmaps/URIs, public YouTube IDs when supplied, then exact-title
-  TMDB matching for movies/shows. Report provider metadata limits instead of inventing missing positions or titles.
-  Long OK on resume/recommendation cards opens the removal/hide menu; preserve the existing dock reorder hold.
+- What's playing (`NowPlaying`) comes from the apps' media sessions, which Android hands only to an allowed notification
+  listener. A listener could read every notification, so ours follows Home Settings' *Now Playing widget* (off by
+  default): turning it on allows it through ADB (`HomeMode.nowPlayingAccess`, `cmd notification allow_listener`; the
+  `enabled_notification_listeners` setting grants nothing since Android 8) and proves it took (`Capabilities.LISTENER`,
+  else the row shows Unavailable); turning it off, *Original* and the watchdog's revert take it back. The switch to
+  Free My TV mode allows nothing. `HomeMode` sets it, under the `RUN` lock, to what the widget says at that moment (so
+  quick toggles and a revert can't cross), `verifyNow` does the same after a boot or an update, and a screen that finds
+  it on but not allowed asks once.
+  It unbinds itself as soon as it connects (the permission is all it's for), and the home screen and the screensaver
+  watch the sessions only while they show. The line is cut to fit when the title changes, never while drawing.
 - HY300 projectors (Hotack, Allwinner H713, Android 11 tested; the build claims to be an `askey`/`adt3`): the stock
   home screen and screensaver are `com.htc.htclauncherhighenglishd08`, which also carries an ad SDK (`com.zeasn.ad`).
   Keystone, zoom and projection mode live in `com.htc.htcsettings` (`action.htcsettings.prjsettings`), and the Miracast

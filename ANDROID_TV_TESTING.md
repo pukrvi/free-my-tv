@@ -6,8 +6,8 @@ verification. The task must explicitly authorize installing or launching the app
 ## Target and privacy
 
 - TV: `192.168.1.9:5555`.
-- Stable baseline: tag `stable` at `b920f4a`. Keep `settings-nav` and `continue-watching` in separate worktrees; verify the
-  active branch and preserve its existing changes. Build only after the task branches are deliberately integrated.
+- Settings branch: `settings-nav`; the separate home task uses `ui/yours` in its own worktree. Verify the active branch
+  and preserve its existing changes; do not build one task from the other task's checkout.
 - ADB: `/Users/vishmac/Library/Android/sdk/platform-tools/adb`.
 - TV-specific project configuration belongs in the repository. PII stays in the user's local-only environment file.
 - Read only environment values needed for the task. Never print or commit the environment file.
@@ -38,9 +38,6 @@ capturing screenshots.
    $ADB -s 192.168.1.9:5555 shell am force-stop io.freemytv
    $ADB -s 192.168.1.9:5555 shell am start -W -a android.intent.action.MAIN -c android.intent.category.HOME
    ```
-
-Use the explicit HOME intent for verification; `monkey -p io.freemytv` opens the app icon, which is Settings, rather than
-the TV home activity (`HomeActivity`).
 
 ## Capture navigation states
 
@@ -75,52 +72,38 @@ sleep 1
 $ADB -s 192.168.1.9:5555 exec-out screencap -p > "$SCREEN_DIR/rows-05-up.png"
 ```
 
-From the dock, Down enters Continue Watching when it has entries; otherwise it enters the first populated recommendation
-shelf. Left and Right move across the focused row. From Continue Watching, Down enters For You and Up returns to the
-resume row; from For You, Up returns to Continue Watching when present, otherwise to the dock.
+The recorded key sequence is a historical home check. For **Vibe TV 1**, use the current visible section order rather than assuming a fixed number of presses: from the dock, Up reaches quick actions; Down reaches populated Continue Watching or the first populated recommendation shelf in the default order. Custom order/visibility must be followed literally, skipping informational weather. Simba and Lamplight have different navigation and need their own fresh captures.
 
 ## Settings verification
 
-After the home-row checks finish and the device is released, open Settings from the home screen. The home starts focused
-on the first dock app: press UP, RIGHT twice to **Home Settings**, then OK. Settings should open with **Home Screen**
-selected in the rail and its content visible on the right. Capture `settings-01-home-screen.png`.
+Wait for any other thread to release the TV before installing or sending input. Preserve the latest combined home and Continue Watching source in the test build. A prior Settings-only APK must not replace newer playback fixes.
 
-In Settings, Up and Down on the rail should immediately update the right panel. Right or OK enters the panel, with the
-first row ready. Back or Left returns to the selected rail item. Use the following sequence; wait about one second after
-each navigation group and capture each state:
+Launch the Home activity with `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME`; inspect the resting screenshot before navigating. From the first dock app, UP then RIGHT twice and OK opens Home Settings. Do not assume remembered home focus after returning from another activity.
 
-1. From the initial rail, press DOWN three times to **Widgets** without pressing Right or OK. Capture
-   `settings-02-widgets.png`; confirm the content is already visible, with a weather toggle and city row but no
-   hours-versus-days selector. Press Right to enter the rows.
-2. Press Back, DOWN once to **Shelf**, and capture `settings-03-shelf-preview.png`. Press Right and capture
-   `settings-03-shelf.png`; the first app row should have one clear focus treatment.
-3. Press Back, DOWN once to **Top Buttons**, capture `settings-04-top-buttons-preview.png`, then press Right to enter.
-4. Press Back, DOWN once to **Sleep Timer**, then Right and OK. Capture `settings-05-sleep-choices.png`; press Back to
-   close the list without changing the timer.
-5. Press Back from the panel to the rail, then Back once more to leave Settings.
+Save fresh captures under `/tmp/free-my-tv-tv-check/continuous-settings/`:
 
-Save these captures under `/tmp/free-my-tv-tv-check/`. Inspect all at full resolution. Confirm the rail stays visible,
-the right panel updates on each rail move, the panel uses the remaining screen width, the first row is focused on entry,
-Back returns to the matching rail item, and the timer picker closes without applying a change. Do not toggle persistent
-preferences during visual checks unless you record and restore their original values.
+1. Capture startup with Home Screen selected in the left column. Its thumbnail choices are ordered **Vibe TV 1**, **Simba (Free-My-TV)**, **Lamplight**, then **Google TV**. Both columns use one surface separated by a vertical rule. Confirm the active check and focused tile are distinguishable.
+2. RIGHT enters the first thumbnail. RIGHT/LEFT crosses columns; DOWN/UP crosses grid rows. Read the labels before OK so the navigation test does not accidentally choose Google TV and run factory recovery.
+3. When Vibe TV 1 is selected, **Home sections** appears immediately below Home Screen in the rail and continuous document. It is absent for Simba and Lamplight, with no empty gap or inaccessible hidden node. Use labels rather than fixed press counts to navigate afterward.
+4. Jump to Screensaver from the left. Capture Home Settings visible below, confirming short sections do not occupy an entire screen. RIGHT enters Preview. DOWN traverses My Photos and Watch from the screensaver, then crosses to Language in Home Settings; confirm the left selection follows it.
+5. LEFT returns to Home Settings in the navigation. DOWN to Widgets and capture the anchor. RIGHT starts on Weather; verify no hours-versus-days selector, Continue Watching is preserved, and coin controls appear only when Quotes is on.
+6. Jump to Shelf, RIGHT, and navigate beyond the ninth item. Capture lower rows with focus visible. Hold OK on an existing item, move once, then Back to cancel; confirm saved order and focused-item visibility are restored.
+7. In Vibe TV 1's Home sections, record the current order/visibility. Reorder once, cancel and verify restoration. Toggle one section and restore it; verify the home honors the change and returns to the recorded composition. Inspect Reset layout confirmation and cancel unless a reset is explicitly part of the check. Do not alter Simba or Lamplight composition through this editor.
+8. Inspect Top Buttons and Sleep Timer anchors. Open the duration picker and cancel without changing its value. Back returns to navigation, and another Back exits. Jump to About and traverse the read-only comparison, recommendation status and notices; confirm a real document end.
+9. With theme switching authorized, select each custom design and return Home for a fresh full-resolution capture. Vibe TV 1 must preserve its existing row layout and playback baseline. Simba must match the original upstream `90908dc5bce178feb52e9868947cc039c64730fc` home (tabs, hero, dock and drawer), not a redesigned approximation. Lamplight must render through its independent adapter/renderer, with usable app/settings/input navigation. Return to the user's chosen theme afterward. Google TV remains last; verify its presence and recovery wiring without activating factory restoration unless that switch is part of the authorized test.
+10. Read the current HOME default; custom themes use `io.freemytv/.HomeActivity`. Do not call `set-home-activity` to implement a custom-theme switch. Leave the TV at home and release it to the next thread. Stop any temporary wake process.
 
-## Continue Watching verification
+Preserve the playback fixes recorded in [PLAYBACK_STATUS.md](PLAYBACK_STATUS.md), based on commit `9d4473b`. Do not claim Netflix or Prime exact titles/artwork or automatic resume from an app launch. Keep YouTube/Stremio verified artwork/progress and the JioHotstar app-art fallback, expiry/dismissal rules and existing card menus. Report which theme was checked; a passing Vibe TV 1 playback test does not automatically validate every theme's controls.
 
-After Settings is integrated, enable **Home Settings → Widgets → Continue Watching** using the remote. This grants the
-row access to the same media sessions used by Now Playing. Play a short public video in YouTube, pause it, return Home,
-and confirm the row shows its title, app and progress. Capture the resting and focused-card states. Select the card and
-confirm the video reopens and playback resumes. This task intentionally enables the feature and leaves it on. Keep the
-TV awake during the sequence with the remote; do not change the screen timeout. Netflix, Prime Video and Stremio depend
-on the metadata and resume behavior each app exposes; verify their app launch paths only when a usable session is
-available, and report any service-specific limit.
+Inspect the captures at 1920×1080. Check text/value separation, one focused item, header/row rhythm, safe margins, and clipping during cross-section scrolling. Never claim a visual pass without opening the captures. Record any unavailable device check explicitly. Do not change system font, picture, sound, account, or network settings during this pass.
 
 ## Inspect the screenshots
 
-Open all screenshots at full resolution. Use Python/PIL to confirm they are `1920×1080` and sample pixels around
+Open all five screenshots at full resolution. Use Python/PIL to confirm they are `1920×1080` and sample pixels around
 the weather, dock, chips and row boundaries. Check the actual images as well as the samples.
 
 - Weather icons have clear space from their temperature text; hourly and daily cells do not overlap.
-- Dock, chips and row labels remain visible during page scrolling. Row labels keep a 384 design-unit pitch.
+- Dock, chips and row labels remain visible during page scrolling. Row labels keep a 340 design-unit pitch.
 - The selected card stays within the horizontal viewport and the focused row stays on screen after scrolling.
 - Exactly one recommendation card has a focus ring in each row-focused screenshot. Its title is legible over the image
   scrim and its metadata does not collide with the following row.
@@ -135,17 +118,3 @@ report include the build result, device steps, all screenshot paths, what passed
 Earlier successful captures may be available at `/var/folders/35/r0h10d7x1zx62hx7nxv1xg280000gn/T/opencode/rows-01-rest.png`
 and the corresponding `rows-02-down.png` through `rows-05-up.png`; use them as a visual reference only, and capture fresh
 screenshots for each new build.
-
-## Continue Watching follow-up checks
-
-Read [PLAYBACK_STATUS.md](PLAYBACK_STATUS.md) for the provider results and limits of the current build before retrying.
-
-Run `tools/run-history-checks.sh 192.168.1.9:5555` after installing the current build when device testing is authorized.
-The temporary instrumentation APK uses isolated preferences/cache to verify elapsed playback position, missing paused
-fields, completion, persistent dismissal, Hotstar support and provider expiry. It never clears the user's history.
-Capture and inspect For You, Anime, Movies and TV Shows with a populated Continue Watching row; headings must remain
-visible. Hold OK on a resume card and a recommendation, check Cancel/Back and release suppression, then verify removal
-with a test title. Revisit Home to confirm it stays hidden. Use a public YouTube video to verify fresh session artwork;
-older entries may use an app logo until the next playback publishes artwork. Check JioHotstar's title and app launch.
-Prime/Netflix can publish generic/null metadata; distinguish app launch from verified title/progress capture. Android's
-Watch Next provider was empty on this TV during the October 27 check. Netflix also blocks screenshots/accessibility text.

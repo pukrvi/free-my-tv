@@ -110,6 +110,17 @@ final class Prefs {
         version++;
     }
 
+    /** Home design is separate from the light/dark appearance preference. */
+    static String homeDesign() {
+        String value = sp().getString("home-design", "vibe");
+        return "simba".equals(value) || "lamplight".equals(value) ? value : "vibe";
+    }
+
+    static void setHomeDesign(String value) {
+        if (!"vibe".equals(value) && !"simba".equals(value) && !"lamplight".equals(value)) return;
+        put("home-design", value);
+    }
+
     // MARK: - Language and units
 
     /** "auto" or a language code as picked ("pt", "fr", "zh-CN"…); Ui.applyLanguage finds its catalogue. */

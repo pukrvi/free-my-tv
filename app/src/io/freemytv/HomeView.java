@@ -56,7 +56,7 @@ import java.util.function.Consumer;
  * Measurements are in a 1920×1080 space (k = width / 1920). The screen is split into layers so the TV's weak GPU only
  * redraws what changed.
  */
-final class HomeView extends ViewGroup implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
+final class HomeView extends ViewGroup implements HomeSurface, Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
     // tvOS grid (Human Interface Guidelines): content inside the safe area, 80 px from the sides and 60 from top and
     // bottom; 40 px between items; 7 columns of 217 px (the apps). The shelf glass extends 36 px past the tiles (the
     // same padding on all four sides) and the tile corners are concentric with it (glass radius = radius + padding).
@@ -121,6 +121,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final Layer sky, strip, platter, tiles, drawerLayer, sheetLayer, toastLayer;
     private final Layer[] rowLayers = new Layer[4];
     private int zone = Z_SHELF;
+    private final List<String> sectionOrder;
+    private final Map<String, Boolean> sectionEnabled = new HashMap<>();
+    private final Map<String, Float> sectionTops = new HashMap<>();
+    private float sectionDocumentBottom;
 
     // Night look (like Apple's "Automatic" appearance): darker from sunset to sunrise, with a 2 s transition.
     private static final long NIGHT_MS = 2000;
@@ -348,6 +352,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     HomeView(Activity a) {
         super(a);
         activity = a;
+        sectionOrder = HomeSections.order(a);
+        for (String key : HomeSections.keys()) sectionEnabled.put(key, HomeSections.visible(a, key));
         data = HomeData.get(a);
         recs = Recs.get(a);
         click = new Click(a);
@@ -401,11 +407,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // First time: right away (a cold start opens with the apps already there); missing logos come from reload().
         setShelf(HomeApps.shelf(a, false));
         setDrawerItems(drawerList(a));
+        updateSectionLayout();
+        chooseDefaultFocus();
+        pageScroll.snap(pageScroll.target);
     }
 
     // MARK: - Lifecycle (called by HomeActivity)
 
-    void resume() {
+    public void resume() {
         if (running) return;
         running = true;
         checkNight(false);
@@ -447,7 +456,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         spoken.readAgain();
     }
 
-    void pause() {
+    public void pause() {
         if (!running) return;
         running = false;
         cancelReorder(true);
@@ -463,18 +472,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (tvInputs != null) tvInputs.unregisterCallback(inputCallback);
     }
 
-    void destroy() {
+    public void destroy() {
         pause();
         if (launcherApps != null) launcherApps.unregisterCallback(packages);
         click.release();
     }
 
     /** Starting state (Home pressed while the home screen is showing): first app focused, chips and sheet closed. */
-    void reset(boolean animated) {
+    public void reset(boolean animated) {
         wake();
         cancelReorder(!animated);
-        zone = Z_SHELF;
-        shelfIndex = 0;
         sheetOpen = false;
         if (animated) {
             sheet.target = 0;
@@ -482,7 +489,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             sheet.snap(0);
         }
         pageScroll.target = 0;
-        if (!animated) pageScroll.snap(0);
+        chooseDefaultFocus();
+        if (!animated) pageScroll.snap(pageScroll.target);
         retarget(!animated);
         motionDirty = true;
     }
@@ -567,6 +575,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         layoutStrip();
         layoutRows();
         layoutResumeRow();
+        updateSectionLayout();
         updatePicks();
         motionDirty = true;
         wake();
@@ -723,13 +732,133 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void applyPageScroll() {
-        float y = -pageScroll.value * k;
-        strip.setTranslationY(y);
-        platter.setTranslationY(y);
-        tiles.setTranslationY(y);
-        drawerLayer.setTranslationY(y);
-        for (Layer row : rowLayers) row.setTranslationY(y);
-        resumeLayer.setTranslationY(y);
+        updateSectionLayout();
+        positionSection(strip, "weather", STRIP_TOP);
+        positionSection(platter, "apps", L_DOCK_TOP + L_PLATTER_TOP);
+        positionSection(tiles, "apps", L_DOCK_TOP + L_PLATTER_TOP);
+        positionSection(drawerLayer, "actions", CHIPS_TOP);
+        for (int i = 0; i < rowLayers.length; i++) positionSection(rowLayers[i], rowSection(i), rowTopUnits(i));
+        positionSection(resumeLayer, "continue", ROWS_TOP);
+    }
+
+    private void positionSection(View layer, String key, float originalTop) {
+        boolean shown = sectionShown(key);
+        layer.setVisibility(shown && layer.getAlpha() > 0.002f ? VISIBLE : INVISIBLE);
+        float top = sectionTops.containsKey(key) ? sectionTops.get(key) : originalTop;
+        layer.setTranslationY((top - originalTop - pageScroll.value) * k);
+    }
+
+    private static String rowSection(int row) {
+        return row == 0 ? "for-you" : row == 1 ? "anime" : row == 2 ? "movies" : "tv-shows";
+    }
+
+    private static String sectionForZone(int group) {
+        if (group == Z_SHELF) return "apps";
+        if (group == Z_DRAWER) return "actions";
+        if (group == Z_RESUME) return "continue";
+        return isRowZone(group) ? rowSection(group - Z_ROW0) : "";
+    }
+
+    private static int zoneForSection(String key) {
+        if (key.equals("actions")) return Z_DRAWER;
+        if (key.equals("apps")) return Z_SHELF;
+        if (key.equals("continue")) return Z_RESUME;
+        for (int row = 0; row < 4; row++) if (key.equals(rowSection(row))) return Z_ROW0 + row;
+        return -1;
+    }
+
+    private boolean configuredSection(String key) { return Boolean.TRUE.equals(sectionEnabled.get(key)); }
+
+    private boolean populatedSection(String key) {
+        if (key.equals("actions")) return !drawerItems.isEmpty();
+        if (key.equals("apps")) return !shelf.isEmpty();
+        if (key.equals("continue")) return !resumeItems.isEmpty();
+        for (int row = 0; row < 4; row++) if (key.equals(rowSection(row))) return !rowItems[row].isEmpty();
+        return false;
+    }
+
+    private boolean sectionShown(String key) {
+        if (key.equals("actions") && !configuredSection(key)) {
+            // An offline/empty home must still expose Settings and All Apps as its recovery route.
+            for (String candidate : sectionOrder) {
+                if (!candidate.equals("actions") && configuredSection(candidate) && populatedSection(candidate)) return false;
+            }
+            return true;
+        }
+        if (!configuredSection(key)) return false;
+        if (key.equals("continue")) return !resumeItems.isEmpty();
+        if (key.equals("weather")) return Prefs.weather() || Prefs.quotes() && HomeData.active().length > 0;
+        return true;
+    }
+
+    private float sectionHeight(String key) {
+        if (key.equals("actions")) return ROW_H;
+        if (key.equals("weather")) return STRIP_H;
+        if (key.equals("apps")) return 206;
+        return ROW_BAND_H - GAP;
+    }
+
+    private void updateSectionLayout() {
+        float top = CHIPS_TOP;
+        for (String key : sectionOrder) {
+            if (!sectionShown(key)) continue;
+            sectionTops.put(key, top);
+            top += sectionHeight(key) + GAP;
+        }
+        sectionDocumentBottom = Math.max(CHIPS_TOP, top - GAP);
+    }
+
+    private void ensureSectionVisible(String key) {
+        updateSectionLayout();
+        if (!sectionShown(key) || !sectionTops.containsKey(key)) return;
+        float top = sectionTops.get(key), bottom = top + sectionHeight(key);
+        float target = pageScroll.target;
+        if (bottom - target > PAGE_BOTTOM - 20) target = bottom - PAGE_BOTTOM + 20;
+        if (top - target < CHIPS_TOP) target = top - CHIPS_TOP;
+        pageScroll.target = Math.max(0, Math.min(pageScrollMax(), target));
+        motionDirty = true;
+        wake();
+    }
+
+    private void chooseDefaultFocus() {
+        if (sectionShown("apps") && !shelf.isEmpty()) {
+            zone = Z_SHELF;
+            shelfIndex = 0;
+        } else {
+            zone = Z_DRAWER;
+            drawerIndex = 0;
+            for (String key : sectionOrder) if (sectionShown(key) && populatedSection(key) && zoneForSection(key) >= 0) {
+                zone = zoneForSection(key);
+                if (zone == Z_RESUME) resumeCol = 0;
+                else if (isRowZone(zone)) rowCol[zone - Z_ROW0] = 0;
+                break;
+            }
+        }
+        ensureSectionVisible(sectionForZone(zone));
+    }
+
+    private boolean moveVertical(int direction, float x) {
+        int current = sectionOrder.indexOf(sectionForZone(zone));
+        for (int at = current + direction; at >= 0 && at < sectionOrder.size(); at += direction) {
+            String key = sectionOrder.get(at);
+            if (!sectionShown(key) || !populatedSection(key)) continue;
+            int group = zoneForSection(key);
+            if (group < 0) continue; // display-only weather never takes focus
+            zone = group;
+            if (group == Z_SHELF) shelfIndex = nearest(tileRects, x);
+            else if (group == Z_DRAWER) drawerIndex = nearest(drawerRects, x);
+            else if (group == Z_RESUME) {
+                resumeCol = nearest(resumeRects, x);
+                ensureRowVisibleResume(resumeCol);
+            } else {
+                int row = group - Z_ROW0;
+                rowCol[row] = nearestRow(row, x);
+                ensureRowVisible(row, rowCol[row]);
+            }
+            ensureSectionVisible(key);
+            return true;
+        }
+        return false;
     }
 
     private void updateSleep() {
@@ -797,9 +926,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             int next = closestPopulatedRow(activeRow);
             if (next >= 0) enterRow(next, activeX);
             else {
-                zone = Z_SHELF;
-                shelfIndex = shelf.isEmpty() ? 0 : nearest(tileRects, activeX);
-                pageScroll.target = 0;
+                chooseDefaultFocus();
                 motionDirty = true;
                 retarget(false);
             }
@@ -891,17 +1018,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void ensurePageScroll(int row) {
-        ensurePageScrollAt(rowTopUnits(row));
-    }
-
-    private void ensurePageScrollAt(float top) {
-        float bottom = top + ROW_BAND_H;
-        float target = pageScroll.target;
-        if (bottom - target > PAGE_BOTTOM) target = bottom - PAGE_BOTTOM;
-        if (top - target < PAGE_TOP) target = top - PAGE_TOP;
-        pageScroll.target = Math.max(0, Math.min(pageScrollMax(), target));
-        motionDirty = true;
-        wake();
+        ensureSectionVisible(rowSection(row));
     }
 
     /** Where recommendation row `i` (0..3) sits: the Continue Watching row above takes a pitch when it shows. */
@@ -910,12 +1027,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean resumeRowShowing() {
-        return !resumeItems.isEmpty();
+        return configuredSection("continue") && !resumeItems.isEmpty();
     }
 
     /** How far the page may scroll: the last row fully above the bottom safe area, plus the 20 slack it always had. */
     private float pageScrollMax() {
-        return rowTopUnits(3) + ROW_BAND_H - PAGE_BOTTOM + 20;
+        return Math.max(0, sectionDocumentBottom - PAGE_BOTTOM + 20);
     }
 
     private int nearestRow(int row, float x) {
@@ -925,9 +1042,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int closestPopulatedRow(int from) {
         for (int distance = 1; distance < rowItems.length; distance++) {
             int above = from - distance;
-            if (above >= 0 && !rowItems[above].isEmpty()) return above;
+            if (above >= 0 && sectionShown(rowSection(above)) && !rowItems[above].isEmpty()) return above;
             int below = from + distance;
-            if (below < rowItems.length && !rowItems[below].isEmpty()) return below;
+            if (below < rowItems.length && sectionShown(rowSection(below)) && !rowItems[below].isEmpty()) return below;
         }
         return -1;
     }
@@ -960,8 +1077,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 resumeOffset = 0;
                 relayoutRows();   // the recommendations move back up; the page range shrinks with them
                 if (zone == Z_RESUME) {
-                    zone = Z_SHELF;
-                    shelfIndex = 0;
+                    chooseDefaultFocus();
                     retarget(false);
                 }
             }
@@ -991,6 +1107,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void relayoutRows() {
         for (int i = 0; i < rowLayers.length; i++) place(rowLayers[i], 0, Math.round(rowTopUnits(i) * k));
         layoutRows();
+        updateSectionLayout();
         pageScroll.target = Math.min(pageScroll.target, pageScrollMax());
         motionDirty = true;
         for (Layer row : rowLayers) row.invalidate();
@@ -1022,7 +1139,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         zone = Z_RESUME;
         resumeCol = nearest(resumeRects, x);
         ensureRowVisibleResume(resumeCol);
-        ensurePageScrollAt(ROWS_TOP);
+        ensureSectionVisible("continue");
         aim(resumeFocus, resumeCol, false);
         resumeLayer.invalidate();
     }
@@ -2053,6 +2170,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Sets the springs' targets from the current focus (snap: no animation). */
     private void retarget(boolean snap) {
+        String active = sectionForZone(zone);
+        if (!sheetOpen && !sleepOpen && (!sectionShown(active) || !populatedSection(active))) chooseDefaultFocus();
         revealShelf(snap);
         boolean focus = !sheetOpen && !sleepOpen;
         boolean tilesChanged = aim(tileFocus, focus && zone == Z_SHELF ? shelfIndex : -1, snap);
@@ -2094,7 +2213,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     /** All Apps from the remote's button. Coming back from another app, resume() opens it (it closes the sheet). */
-    void showAllApps() {
+    public void showAllApps() {
         if (!running) {
             allAppsOnResume = true;
             return;
@@ -2434,7 +2553,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // MARK: - Keys: only the arrows, OK, Back and Settings (system keys pass through to the system)
 
-    boolean onKey(KeyEvent e) {
+    public boolean onKey(KeyEvent e) {
         wake();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (reordering) return reorderKey(e, down);
@@ -2508,9 +2627,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             closeSleepPicker();
         } else if (sheetOpen) {
             closeSheet();
-        } else if (zone != Z_SHELF) {
-            zone = Z_SHELF;
-            pageScroll.target = 0;
+        } else if (zone != Z_SHELF || !sectionShown("apps")) {
+            chooseDefaultFocus();
             motionDirty = true;
             retarget(false);
         } else {
@@ -2554,63 +2672,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 resumeCol = next;
                 if (moved) {
                     ensureRowVisibleResume(next);
-                    ensurePageScrollAt(ROWS_TOP);
+                    ensureSectionVisible("continue");
                 }
             }
         } else if (dy != 0) {
-            if (zone == Z_SHELF) {
-                if (dy < 0 && !drawerItems.isEmpty()) {
-                    openChips();
-                    moved = true;
-                } else if (dy > 0) {
-                    if (resumeRowShowing()) {
-                        enterResume(x);
-                        moved = true;
-                    } else {
-                        int row = findPopulatedRow(-1, 1);
-                        if (row >= 0) {
-                            enterRow(row, x);
-                            moved = true;
-                        }
-                    }
-                }
-            } else if (zone == Z_DRAWER) {
-                if (dy > 0) {
-                    zone = Z_SHELF;
-                    if (!shelf.isEmpty()) shelfIndex = nearest(tileRects, x);
-                    moved = true;
-                }
-            } else if (zone == Z_RESUME) {
-                if (dy < 0) {
-                    zone = Z_SHELF;
-                    if (!shelf.isEmpty()) shelfIndex = nearest(tileRects, x);
-                    pageScroll.target = 0;
-                    motionDirty = true;
-                    moved = true;
-                } else {
-                    int row = findPopulatedRow(-1, 1);
-                    if (row >= 0) {
-                        enterRow(row, x);
-                        moved = true;
-                    }
-                }
-            } else if (isRowZone(zone)) {
-                int row = zone - Z_ROW0;
-                int next = dy < 0 ? findPopulatedRow(row, -1) : findPopulatedRow(row, 1);
-                if (dy < 0 && next < 0 && resumeRowShowing()) {
-                    enterResume(x);   // the row sits between the dock and the recommendations
-                    moved = true;
-                } else if (dy < 0 && next < 0) {
-                    zone = Z_SHELF;
-                    if (!shelf.isEmpty()) shelfIndex = nearest(tileRects, x);
-                    pageScroll.target = 0;
-                    motionDirty = true;
-                    moved = true;
-                } else if (next >= 0) {
-                    enterRow(next, x);
-                    moved = true;
-                }
-            }
+            moved = moveVertical(dy, x);
         }
         if (!moved) return;
         retarget(false);
@@ -2619,7 +2685,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private int findPopulatedRow(int from, int direction) {
         for (int row = from + direction; row >= 0 && row < rowItems.length; row += direction) {
-            if (!rowItems[row].isEmpty()) return row;
+            if (sectionShown(rowSection(row)) && !rowItems[row].isEmpty()) return row;
         }
         return -1;
     }
@@ -3028,13 +3094,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             for (int i = 0; i < others.size(); i++) out.add(a11yId(GRID, i));
             return;
         }
-        for (int i = shelfFirst; i < Math.min(shelf.size(), shelfFirst + shelfVisible); i++) out.add(a11yId(Z_SHELF, i));
-        for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
-        if (resumeRowShowing()) {
-            for (int i = 0; i < resumeItems.size(); i++) out.add(a11yId(Z_RESUME, i));
-        }
-        for (int row = 0; row < rowItems.length; row++) {
-            for (int i = 0; i < rowItems[row].size(); i++) out.add(a11yId(Z_ROW0 + row, i));
+        for (String key : sectionOrder) {
+            if (!sectionShown(key)) continue;
+            if (key.equals("apps")) {
+                for (int i = shelfFirst; i < Math.min(shelf.size(), shelfFirst + shelfVisible); i++) out.add(a11yId(Z_SHELF, i));
+            } else if (key.equals("actions")) {
+                for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
+            } else if (key.equals("continue")) {
+                for (int i = 0; i < resumeItems.size(); i++) out.add(a11yId(Z_RESUME, i));
+            } else {
+                int group = zoneForSection(key);
+                if (!isRowZone(group)) continue;
+                int row = group - Z_ROW0;
+                for (int i = 0; i < rowItems[row].size(); i++) out.add(a11yId(group, i));
+            }
         }
     }
 
@@ -3077,6 +3150,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean a11yBounds(int id, Rect out) {
         int group = (id - 1) / 1000, i = (id - 1) % 1000;
         float dy;
+        if (group != GRID && !sectionShown(sectionForZone(group))) return false;
         if (group == GRID) {
             if (!sheetOpen || i >= others.size()) return false;
             float gridWidth = COLUMNS * GRID_W + (COLUMNS - 1) * GRID_GAP;
@@ -3148,7 +3222,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             click.move();
             return;
         }
-        if (sheetOpen || reordering) return;
+        if (sheetOpen || reordering || !sectionShown(sectionForZone(group))) return;
         if (isRowZone(group)) {
             int row = group - Z_ROW0;
             if (i >= rowItems[row].size()) return;
@@ -3159,17 +3233,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             if (i >= resumeItems.size()) return;
             resumeCol = i;
             ensureRowVisibleResume(i);
-            ensurePageScrollAt(ROWS_TOP);
+            ensureSectionVisible("continue");
         } else if (group == Z_DRAWER) {
             if (i >= drawerItems.size()) return;
             drawerIndex = i;
-            pageScroll.target = 0;
-            motionDirty = true;
+            ensureSectionVisible("actions");
         } else if (group == Z_SHELF) {
             if (i >= shelf.size()) return;
             shelfIndex = i;
-            pageScroll.target = 0;
-            motionDirty = true;
+            ensureSectionVisible("apps");
         } else {
             return;
         }
