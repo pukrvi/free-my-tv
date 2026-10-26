@@ -2,6 +2,8 @@
 
 This is the source of truth for the Android TV home screen and settings UI on the TCL Smart TV Pro running Android 12. It records the user's decisions from the October 2026 redesign; older screenshots and handoff notes may describe superseded layouts. The Android reference is 1920 × 1080, with remote-only navigation and the TV's dark glass visual language. When a later user instruction changes a rule, update this guide and follow the newer instruction. The webOS and Tizen builds remain separate platform implementations.
 
+Implementation is integrated from `e740614` (Settings) and `9d4473b` (playback); see [FEATURES.md](FEATURES.md), [PLAYBACK_STATUS.md](PLAYBACK_STATUS.md) and [Settings verification](design/SETTINGS_VERIFICATION.md) for evidence and limits.
+
 ## Home themes
 
 The public project is Vibe TV; Free My TV remains the upstream attribution and current runtime label. Home Screen presents thumbnail choices in this order:
@@ -124,7 +126,7 @@ The weather widget remains informational and does not receive home-screen focus.
 
 ## Build and device verification for this version
 
-Build the Android app from the `settings-nav` branch with the repository's Java 17 `build.sh` workflow. Install the resulting `FreeMyTV.apk` on the TCL target using Wi-Fi ADB, then launch it as the Home activity. Preserve the configured signing key so an update replaces the existing app instead of forcing an uninstall. Never read, print, or commit `config.properties`; its TMDB key stays private.
+Build the Android app from the integrated `main` revision with the repository's Java 17 `build.sh` workflow. Install the resulting `FreeMyTV.apk` on the TCL target using Wi-Fi ADB, then launch it as the Home activity. Preserve the configured signing key so an update replaces the existing app instead of forcing an uninstall. Never read, print, or commit `config.properties`; its TMDB key stays private.
 
 The current TCL firmware exposes the background-start operation as `APP_AUTO_START`; it must be allowed for the boot integration to start the launcher. After a reboot, verify that Free My TV resolves as the Home activity and that the installed version is the build just installed. Keep **Home Screen → Google TV** available as the UI route to Original recovery mode.
 

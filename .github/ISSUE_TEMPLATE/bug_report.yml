@@ -1,0 +1,28 @@
+name: Bug report
+description: Report broken behavior with reproducible steps.
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Hardware, build and app versions
+      description: Exact manufacturer/model, OS/firmware, Vibe TV commit and local changes, affected app package/version. Say unknown where necessary.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and workaround
+      description: Sanitized screenshots/logs and anything that helps. Omit credentials, network addresses, device identifiers and personal viewing history.

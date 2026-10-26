@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Compatibility and current limitations
+    url: https://github.com/pukrvi/free-my-tv/blob/HEAD/COMPATIBILITY.md
+    about: Check device and streaming-app results before reporting.

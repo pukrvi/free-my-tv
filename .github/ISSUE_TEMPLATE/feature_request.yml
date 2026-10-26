@@ -1,0 +1,21 @@
+name: Feature request
+description: Explain a user need and a proposed improvement.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior and alternatives
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Hardware, apps and scope
+      description: Target models/platforms, affected apps and versions, accessibility considerations and how you would verify it.

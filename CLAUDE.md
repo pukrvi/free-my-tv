@@ -1,10 +1,12 @@
-# Free My TV: notes for Claude
+# Vibe TV: guide for assistants
+
+Vibe TV is this fork of Free My TV. In the integrated Android UI, **Home Screen → Google TV** selects the existing Original recovery mode; legacy notes below may call it Original. Read [FEATURES.md](FEATURES.md) for integrated behavior, [COMPATIBILITY.md](COMPATIBILITY.md) for hardware/app results, and [PRIVACY.md](PRIVACY.md) for data flows. Preserve existing runtime identifiers and upstream credit. For contribution workflow use [CONTRIBUTING.md](CONTRIBUTING.md).
 
 A home screen for Google TV and Android TV that replaces the stock one, plus a settings app that switches between
 Free My TV and the TV's original home screen. A plain Android app in Java, built without Gradle by `build.sh`.
 LG TVs (webOS) and Samsung TVs (Tizen) get the same home screen as a web app: `web/`, packed by `webos/` and `tizen/`
 (see below).
-The website (freemytv.io) is in `docs/`: static HTML, CSS and JS, no build step. A push to `main` that changes it
+The inherited upstream website is in `docs/` (`freemytv.io` belongs to upstream): static HTML, CSS and JS, no build step. A push to `main` that changes it
 publishes it to GitHub Pages (`.github/workflows/pages.yml`). `docs/index.html` (English) and `docs/pt/index.html`
 (Brazilian Portuguese) are the same page in two languages, so change both; visitors from Brazil land on the
 Portuguese one by themselves, and the PT/EN switch in the menu is remembered.
@@ -170,6 +172,8 @@ Developer Mode; Samsung's home screen stays. Two ways:
    makes the TV turn on into Free My TV.
 
 ## Releases
+
+These upstream signing/distribution notes do not establish this fork's ownership of keys, domains or releases. See [FEATURES.md](FEATURES.md#before-publishing-a-release) for Vibe TV release checks.
 
 Every release carries `FreeMyTV.apk` for Google TV and Android TV, built with `./build.sh --generic` (no
 config.properties: no key, and `Place` takes the city, the currency and the region from the TV's time zone through

@@ -1,5 +1,6 @@
-# Free My TV: guide for AI assistants
+# Vibe TV: guide for AI assistants
 
+The public project name is Vibe TV; Free My TV remains the upstream attribution and current runtime label.
 The full guide is [CLAUDE.md](CLAUDE.md): read it first and follow it (it is written for any assistant, not only
 Claude Code). For Android TV builds or device checks, read its “User's TCL Android TV” section and follow
 [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md) for the saved target, build and ADB commands, screenshot checks, and

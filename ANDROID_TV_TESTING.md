@@ -3,6 +3,8 @@
 Use this procedure to verify Android launcher changes on the user's TCL Android TV. A successful build is not device
 verification. The task must explicitly authorize installing or launching the app on the TV; otherwise ask first.
 
+Integrated main runtime matches final Settings `e740614` with playback `9d4473b`; the earlier `stable` tag is a historical baseline. Read [FEATURES.md](FEATURES.md) and [COMPATIBILITY.md](COMPATIBILITY.md) before making feature claims.
+
 ## Target and privacy
 
 - TV: `192.168.1.9:5555`.
@@ -103,12 +105,11 @@ Open all five screenshots at full resolution. Use Python/PIL to confirm they are
 the weather, dock, chips and row boundaries. Check the actual images as well as the samples.
 
 - Weather icons have clear space from their temperature text; hourly and daily cells do not overlap.
-- Dock, chips and row labels remain visible during page scrolling. Row labels keep a 340 design-unit pitch.
+- Dock, chips and row labels remain visible during page scrolling. The default Vibe recommendation row labels keep a 384 design-unit pitch.
 - The selected card stays within the horizontal viewport and the focused row stays on screen after scrolling.
 - Exactly one recommendation card has a focus ring in each row-focused screenshot. Its title is legible over the image
   scrim and its metadata does not collide with the following row.
-- UP returns from Anime to For You, then to chips. Empty rows, if present, keep their spacing and show the quiet empty
-  state.
+- UP follows visible populated sections in their configured order; hidden/empty sections close their gaps.
 - Toasts do not cover the weather header or row labels.
 
 If a check fails, name the visible or interaction defect, make the smallest source change, then rebuild, reinstall and

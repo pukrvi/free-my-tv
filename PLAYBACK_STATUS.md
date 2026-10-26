@@ -2,7 +2,7 @@
 
 This records the installed `continue-watching` branch on the owner’s TCL Android 12 TV. It is the feature-status reference
 for README/documentation updates and for the parallel Settings/home-theme work. Preserve these tested behaviors when
-integrating a new home theme. `stable` remains at `b920f4a`; this feature is not merged into main.
+integrating a new home theme. `stable` remains at `b920f4a`; playback `9d4473b` and final Settings `e740614` are now integrated into main. Historical captures below predate the final themes; the current gallery is [documentation/SCREENSHOTS.md](documentation/SCREENSHOTS.md).
 
 ## What works
 

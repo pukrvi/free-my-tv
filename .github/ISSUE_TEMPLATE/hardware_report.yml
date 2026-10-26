@@ -1,0 +1,40 @@
+name: Hardware and app test report
+description: Share exact hardware and which apps/actions work in Vibe TV.
+title: "[Hardware] Manufacturer / exact model"
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for testing your fork. Share failures too. Omit IP addresses, serial/MAC numbers, accounts and secrets."
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Exact hardware and firmware
+      description: Manufacturer, retail model, Android-reported model, OS/API and firmware/build version; remote model if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: build
+    attributes:
+      label: Vibe TV build
+      description: Commit SHA, branch, local changes, build date and generic/personal build. Do not attach private configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: apps
+    attributes:
+      label: Apps and results
+      description: For EACH app give package/version, launch, title capture, progress, artwork, reopen, exact-position resume, and failures. Use Pass / Fail / Not tested for each action.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction and device checks
+      description: Steps, expected/actual results, D-pad behavior, reboot and Original recovery results. Mark checks you did not perform.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence and limits
+      description: Screenshots, minimal logs, test date, known limitations. Review viewing history and account details before posting.

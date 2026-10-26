@@ -1,0 +1,21 @@
+# Privacy and permissions
+
+Vibe TV inherits Free My TV's local settings and opt-in media widgets. It has no project account system or analytics integration. Streaming apps have their own accounts, ads and privacy practices.
+
+## Network services
+
+TMDB supplies recommendations, images and streaming availability when configured. Open-Meteo receives the configured city coordinates (or the time-zone-derived location) for forecasts. Binance is used when market quotes are enabled; Watchmode is used when its optional key is configured. These providers receive ordinary connection data and the requests needed for their features.
+
+The integrated playback implementation may query TMDB using a watched movie/show title to find missing artwork, and download YouTube thumbnails using a known video ID. That can disclose the requested title or ID to the image/data provider. Do not describe that revision as keeping every playback-derived value on the TV. Image requests depend on available metadata; artwork is not guaranteed.
+
+## Playback history
+
+Now Playing and Continue Watching start off and use Android media-session access authorized through a notification listener. The implementation reads media sessions rather than notification messages. While Continue Watching is enabled, the listener stays bound to catch metadata before an app closes its session; Now Playing alone uses the existing immediate-unbind behavior.
+
+Local history holds titles, app identity, playback position, duration and content IDs when supplied. It keeps up to twelve entries, expiring YouTube entries after two days and other services after ten days. In Vibe TV 1, hold OK on a history card to remove it. Disabling a widget should not be assumed to erase all previously saved data. Avoid including personal viewing history in public screenshots or logs.
+
+## Installation and secrets
+
+Android switching uses the TV's local ADB access to change the launcher/screensaver and disable selected packages. This is privileged device access; read the installation guide and preserve Original recovery. The app does not remove ads inside streaming apps.
+
+Keep `config.properties`, API tokens, pairing codes, certificates, signing keys and local environment files private. Public bug reports should omit IP/MAC addresses, serial numbers, account names and raw playback dumps. Share only the minimal sanitized evidence needed to reproduce a problem.
