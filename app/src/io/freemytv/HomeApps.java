@@ -66,6 +66,7 @@ final class HomeApps {
     static final class Item {
         int kind;
         String key, label, pkg, inputId, number;
+        boolean resume;     // retain the provider's current task instead of resetting its launch activity
         String uri;         // opens this address in the app instead of the app's home (a title's page)
         Intent intent;      // DEVICE: the TV maker's own screen it opens
         String symbol;      // icon for the shortcuts and special cards
@@ -344,6 +345,23 @@ final class HomeApps {
         return it;
     }
 
+    /** A 16:9 card in All Apps' look (dark tile, brand glow, the app's own logo) for any installed app: what the
+     * Continue Watching row puts behind a title. */
+    static Item tileItem(Context c, String pkg) {
+        Item it = new Item();
+        it.kind = APP;
+        it.pkg = pkg;
+        String[] d = known(pkg);
+        if (d == null) {
+            it.key = pkg;
+            it.setTile(appTile(c, null, pkg, 0));
+        } else {
+            it.key = d[0];
+            it.setTile(appTile(c, d[0], d[2], 0xFF000000 | Integer.parseInt(d[3], 16)));
+        }
+        return it;
+    }
+
     /** For the bottom drawer: live TV and every HDMI input (the ones with no device are shown dimmed). */
     static List<Item> allInputs(Context c) {
         List<Item> items = new ArrayList<>();
@@ -543,7 +561,10 @@ final class HomeApps {
             case APP:
                 intent = launchIntent(a.getPackageManager(), it.pkg);
                 plain = intent;
-                if (plain != null) plain.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                if (plain != null) {
+                    if (it.resume) plain.setFlags(plain.getFlags() & ~Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    else plain.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                }
                 if (intent != null && it.uri != null) {
                     intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(it.uri)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(it.pkg);
                 }

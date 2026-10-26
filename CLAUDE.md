@@ -34,6 +34,19 @@ before you do it, and let them do the taps on the TV.
 - Don't change the TV's picture, sound, network or account settings.
 - Keep the way back working: the *Original* mode and the watchdog.
 
+## User's TCL Android TV
+
+The current Android design target is the TCL Smart TV Pro running Android 12. Its launcher UI is remote-first and uses a
+1920 × 1080 reference layout. For the saved device address, one-build/one-install workflow, screenshot sequence, and
+privacy requirements, follow [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). Settings changes belong on `settings-nav`;
+preserve home-screen work in its own branch and integrate only after that work is complete.
+
+- The TV uses `APP_AUTO_START` for TCL's background-start permission; it must remain allowed for the boot integration.
+- Never read, print, or commit `config.properties`. Use the existing build flow and keep local configuration and
+  signing material private.
+- Settings must keep Home Screen and Original available as the recovery path. Do not change picture, sound, network, or
+  account settings in the TV's own Settings app.
+
 ## Installing it for someone
 
 1. **Ask** for the TV's IP address and their city, if they didn't say.

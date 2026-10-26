@@ -2,6 +2,7 @@ package io.freemytv;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.LauncherApps;
@@ -55,7 +56,7 @@ import java.util.function.Consumer;
  * Measurements are in a 1920×1080 space (k = width / 1920). The screen is split into layers so the TV's weak GPU only
  * redraws what changed.
  */
-final class HomeView extends ViewGroup implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
+final class HomeView extends ViewGroup implements HomeSurface, Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
     // tvOS grid (Human Interface Guidelines): content inside the safe area, 80 px from the sides and 60 from top and
     // bottom; 40 px between items; 7 columns of 217 px (the apps). The shelf glass extends 36 px past the tiles (the
     // same padding on all four sides) and the tile corners are concentric with it (glass radius = radius + padding).
@@ -77,7 +78,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float WEATHER_CITY_BASE = 38, WEATHER_SUN_BASE = 176;
     private static final float ROWS_TOP = 696, ROW_PITCH = 384, ROW_BAND_H = 384;
     private static final float ROW_CARD_TOP = 52, ROW_CARD_W = 420, ROW_CARD_H = 236, ROW_CARD_GAP = 28;
-    private static final float PAGE_TOP = 150, PAGE_BOTTOM = 1080, PAGE_SCROLL_MAX = 1172;
+    private static final float PAGE_TOP = 150, PAGE_BOTTOM = 1080;
     // "All Apps" sheet.
     private static final int COLUMNS = 5, VISIBLE_ROWS = 3;
     private static final float GRID_W = 300, GRID_H = 169, GRID_GAP = 40, GRID_ROW = 239, GRID_TOP = 196, GRID_RADIUS = 22;
@@ -87,8 +88,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** Blur radii of the shadow and shadowDeep paints (Shadows needs them to draw the same blur on older TVs). */
     private static final float SHADOW_BLUR = 26, DEEP_BLUR = 30;
     private static final int SKY = 0, STRIP = 1, PLATTER = 4, TILES = 5, DRAWER = 6, SHEET = 7, TOAST = 8,
-            ROW0 = 9, ROW1 = 10, ROW2 = 11, ROW3 = 12;
-    private static final int Z_SHELF = 2, Z_DRAWER = 3, Z_ROW0 = 20;
+            ROW0 = 9, ROW1 = 10, ROW2 = 11, ROW3 = 12, RESUME = 13;
+    private static final int Z_SHELF = 2, Z_DRAWER = 3, Z_ROW0 = 20, Z_RESUME = 24;
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
     // The dock layer begins at 430; its 20-unit inset puts the glass at 450..656 and the tiles at 490..616.
     private static final float L_DOCK_TOP = 430, L_PLATTER_TOP = 20, L_TILE_H = 126;
@@ -110,13 +111,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         @Override public void focus(int id) { a11yFocus(id); }
         @Override public void click(int id) { activate(); }
         @Override public boolean clickable(int id) { return true; }
-        @Override public boolean holdable(int id) { return (id - 1) / 1000 == GRID && canToggleShelf((id - 1) % 1000); }
-        @Override public void hold(int id) { a11yHold(); }
+        @Override public boolean holdable(int id) {
+            int group = (id - 1) / 1000;
+            return group == GRID && canToggleShelf((id - 1) % 1000) || group == Z_RESUME || isRowZone(group);
+        }
+        @Override public void hold(int id) { a11yFocus(id); if (canManageCard()) openCardMenu(); else a11yHold(); }
     });
     private final RectF a11yRect = new RectF();
     private final Layer sky, strip, platter, tiles, drawerLayer, sheetLayer, toastLayer;
     private final Layer[] rowLayers = new Layer[4];
     private int zone = Z_SHELF;
+    private final List<String> sectionOrder;
+    private final Map<String, Boolean> sectionEnabled = new HashMap<>();
+    private final Map<String, Float> sectionTops = new HashMap<>();
+    private float sectionDocumentBottom;
 
     // Night look (like Apple's "Automatic" appearance): darker from sunset to sunrise, with a 2 s transition.
     private static final long NIGHT_MS = 2000;
@@ -137,6 +145,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private final LinearGradient[] rowScrims = new LinearGradient[4];
     private Paint rowLabel, rowTitle, rowMeta, lQuote;
     private Shader lightGradient;
+
+    // Continue Watching: what other apps were playing (Resume), its own row between the dock and the recommendations.
+    private final Layer resumeLayer;
+    private final NowPlaying.Watch resumeWatch;   // reads the sessions while the home screen shows, and records them
+    private List<Resume.Entry> resumeItems = new ArrayList<>();
+    private Spring[] resumeFocus = new Spring[0];
+    private RectF[] resumeRects = new RectF[0];
+    private float resumeOffset;
+    private AlertDialog cardMenu;
+    private final Map<String, BitmapShader> resumeArtworkShaders = new HashMap<>();
+    private int resumeCol;
+    private final Map<String, HomeApps.Item> resumeTiles = new HashMap<>();   // each app's card tile (null = in the making)
 
     // Shelf
     private List<HomeApps.Item> shelf = new ArrayList<>();
@@ -287,6 +307,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 case ROW1: drawRow(c, 1); break;
                 case ROW2: drawRow(c, 2); break;
                 case ROW3: drawRow(c, 3); break;
+                case RESUME: drawResumeRow(c); break;
                 case SHEET: drawSheetLayer(c); break;
                 default: drawToast(c); break;
             }
@@ -322,6 +343,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             updatePalette();
             checkNight(true);
             updatePicks();
+            reloadResume();   // the "12 min ago" lines, and entries past their month
             updateSleep();
             handler.postDelayed(this, 15_000);
         }
@@ -330,6 +352,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     HomeView(Activity a) {
         super(a);
         activity = a;
+        sectionOrder = HomeSections.order(a);
+        for (String key : HomeSections.keys()) sectionEnabled.put(key, HomeSections.visible(a, key));
         data = HomeData.get(a);
         recs = Recs.get(a);
         click = new Click(a);
@@ -344,6 +368,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         platter = new Layer(a, PLATTER);
         tiles = new Layer(a, TILES);
         drawerLayer = new Layer(a, DRAWER);
+        resumeLayer = new Layer(a, RESUME);
+        resumeWatch = new NowPlaying.Watch(a, this::reloadResume, true);   // records while the home screen shows
         // ROW0 reuses the retired hero layer's position in the old z-order.
         rowLayers[0] = new Layer(a, ROW0);
         rowLayers[1] = new Layer(a, ROW1);
@@ -357,10 +383,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // drawer 19 → 17 ms).
         for (View v : new View[] {platter, tiles, drawerLayer, strip, sheetLayer}) v.setLayerType(Ui.LEGACY ? LAYER_TYPE_NONE : LAYER_TYPE_HARDWARE, null);
         for (Layer row : rowLayers) row.setLayerType(Ui.LEGACY ? LAYER_TYPE_NONE : LAYER_TYPE_HARDWARE, null);
+        resumeLayer.setLayerType(Ui.LEGACY ? LAYER_TYPE_NONE : LAYER_TYPE_HARDWARE, null);
         for (View v : new View[] {sky, strip, platter, tiles, drawerLayer}) {
             v.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);   // TalkBack reads the items (Spoken)
             addView(v);
         }
+        resumeLayer.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        addView(resumeLayer);
         for (Layer row : rowLayers) {
             row.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             addView(row);
@@ -378,11 +407,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // First time: right away (a cold start opens with the apps already there); missing logos come from reload().
         setShelf(HomeApps.shelf(a, false));
         setDrawerItems(drawerList(a));
+        updateSectionLayout();
+        chooseDefaultFocus();
+        pageScroll.snap(pageScroll.target);
     }
 
     // MARK: - Lifecycle (called by HomeActivity)
 
-    void resume() {
+    public void resume() {
         if (running) return;
         running = true;
         checkNight(false);
@@ -396,6 +428,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lastStep = 0;
         data.addListener(this);
         recs.addListener(this);
+        resumeWatch.start();
+        reloadResume();   // what was recorded before, plus what the sessions say right now (just back from an app)
         data.refreshIfStale();
         recs.refreshIfStale();
         Photos.importInbox(getContext(), ownReady);   // photos a computer just sent
@@ -422,32 +456,32 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         spoken.readAgain();
     }
 
-    void pause() {
+    public void pause() {
         if (!running) return;
         running = false;
         cancelReorder(true);
+        if (cardMenu != null) cardMenu.dismiss();
         handler.removeCallbacks(holdStart);
         okHeld = holdArmed = false;
         Choreographer.getInstance().removeFrameCallback(this);
         handler.removeCallbacks(tick);
         handler.removeCallbacks(reloadSoon);
+        resumeWatch.stop();   // the row records only while the home screen shows
         data.removeListener(this);
         recs.removeListener(this);
         if (tvInputs != null) tvInputs.unregisterCallback(inputCallback);
     }
 
-    void destroy() {
+    public void destroy() {
         pause();
         if (launcherApps != null) launcherApps.unregisterCallback(packages);
         click.release();
     }
 
     /** Starting state (Home pressed while the home screen is showing): first app focused, chips and sheet closed. */
-    void reset(boolean animated) {
+    public void reset(boolean animated) {
         wake();
         cancelReorder(!animated);
-        zone = Z_SHELF;
-        shelfIndex = 0;
         sheetOpen = false;
         if (animated) {
             sheet.target = 0;
@@ -455,7 +489,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             sheet.snap(0);
         }
         pageScroll.target = 0;
-        if (!animated) pageScroll.snap(0);
+        chooseDefaultFocus();
+        if (!animated) pageScroll.snap(pageScroll.target);
         retarget(!animated);
         motionDirty = true;
     }
@@ -477,6 +512,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void invalidateAll() {
         for (View v : new View[] {sky, strip, platter, tiles, drawerLayer}) v.invalidate();
         for (Layer row : rowLayers) row.invalidate();
+        resumeLayer.invalidate();
     }
 
     // MARK: - Size and layers
@@ -493,6 +529,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         measure(tiles, width, Math.round(280 * kk));
         // The quick buttons: 24..150, plus the focused tile's growth and its shadow.
         measure(drawerLayer, width, Math.round(190 * kk));
+        measure(resumeLayer, width, Math.round(ROW_BAND_H * kk));
         for (Layer row : rowLayers) measure(row, width, Math.round(ROW_BAND_H * kk));
         measure(sheetLayer, width, height);
         measure(toastLayer, Math.round(1000 * kk), Math.round(220 * kk));
@@ -511,7 +548,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         place(platter, 0, Math.round(L_DOCK_TOP * kk));   // the dock layer: 430..710
         place(tiles, 0, Math.round(L_DOCK_TOP * kk));   // at the dock's top: the focused tile grows past the glass and must not be clipped
         place(drawerLayer, 0, 0);
-        for (int i = 0; i < rowLayers.length; i++) place(rowLayers[i], 0, Math.round((ROWS_TOP + i * ROW_PITCH) * kk));
+        place(resumeLayer, 0, Math.round(ROWS_TOP * kk));
+        for (int i = 0; i < rowLayers.length; i++) place(rowLayers[i], 0, Math.round(rowTopUnits(i) * kk));
         sheetLayer.layout(0, 0, width, height);
         sheetLayer.setPivotX(width / 2f);
         sheetLayer.setPivotY(height / 2f);
@@ -536,6 +574,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         layoutDrawer();
         layoutStrip();
         layoutRows();
+        layoutResumeRow();
+        updateSectionLayout();
         updatePicks();
         motionDirty = true;
         wake();
@@ -608,6 +648,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 rowsMoving = true;
             }
         }
+        if (step(resumeFocus, dt)) {
+            resumeLayer.invalidate();
+            rowsMoving = true;
+        }
         boolean drawerItemsMoving = step(drawerFocus, dt);
         boolean gridMoving = step(gridFocus, dt) | scroll.step(dt);
         boolean sheetMoving = sheet.step(dt);
@@ -632,7 +676,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             drawerLayer.invalidate();
             strip.invalidate();    // the weather strip reads the same data and the same day-night tone
         }
-        if (nightMoving || bgFading) for (Layer row : rowLayers) row.invalidate();
+        if (nightMoving || bgFading) {
+            for (Layer row : rowLayers) row.invalidate();
+            resumeLayer.invalidate();
+        }
         if (gridMoving || gridDirty) sheetLayer.invalidate();
         if (bgFading) sky.invalidate();
         if (bgFading) platter.invalidate();
@@ -670,6 +717,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         show(tiles, home, 0);
         show(drawerLayer, home, 0);   // the chips row
         for (Layer row : rowLayers) show(row, home, 0);
+        show(resumeLayer, home, 0);
         show(sheetLayer, sleepOpen ? 1 : s, 0);
         applyPageScroll();
         float scale = sleepOpen ? 1 : 1.04f - 0.04f * s;
@@ -684,12 +732,133 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void applyPageScroll() {
-        float y = -pageScroll.value * k;
-        strip.setTranslationY(y);
-        platter.setTranslationY(y);
-        tiles.setTranslationY(y);
-        drawerLayer.setTranslationY(y);
-        for (Layer row : rowLayers) row.setTranslationY(y);
+        updateSectionLayout();
+        positionSection(strip, "weather", STRIP_TOP);
+        positionSection(platter, "apps", L_DOCK_TOP + L_PLATTER_TOP);
+        positionSection(tiles, "apps", L_DOCK_TOP + L_PLATTER_TOP);
+        positionSection(drawerLayer, "actions", CHIPS_TOP);
+        for (int i = 0; i < rowLayers.length; i++) positionSection(rowLayers[i], rowSection(i), rowTopUnits(i));
+        positionSection(resumeLayer, "continue", ROWS_TOP);
+    }
+
+    private void positionSection(View layer, String key, float originalTop) {
+        boolean shown = sectionShown(key);
+        layer.setVisibility(shown && layer.getAlpha() > 0.002f ? VISIBLE : INVISIBLE);
+        float top = sectionTops.containsKey(key) ? sectionTops.get(key) : originalTop;
+        layer.setTranslationY((top - originalTop - pageScroll.value) * k);
+    }
+
+    private static String rowSection(int row) {
+        return row == 0 ? "for-you" : row == 1 ? "anime" : row == 2 ? "movies" : "tv-shows";
+    }
+
+    private static String sectionForZone(int group) {
+        if (group == Z_SHELF) return "apps";
+        if (group == Z_DRAWER) return "actions";
+        if (group == Z_RESUME) return "continue";
+        return isRowZone(group) ? rowSection(group - Z_ROW0) : "";
+    }
+
+    private static int zoneForSection(String key) {
+        if (key.equals("actions")) return Z_DRAWER;
+        if (key.equals("apps")) return Z_SHELF;
+        if (key.equals("continue")) return Z_RESUME;
+        for (int row = 0; row < 4; row++) if (key.equals(rowSection(row))) return Z_ROW0 + row;
+        return -1;
+    }
+
+    private boolean configuredSection(String key) { return Boolean.TRUE.equals(sectionEnabled.get(key)); }
+
+    private boolean populatedSection(String key) {
+        if (key.equals("actions")) return !drawerItems.isEmpty();
+        if (key.equals("apps")) return !shelf.isEmpty();
+        if (key.equals("continue")) return !resumeItems.isEmpty();
+        for (int row = 0; row < 4; row++) if (key.equals(rowSection(row))) return !rowItems[row].isEmpty();
+        return false;
+    }
+
+    private boolean sectionShown(String key) {
+        if (key.equals("actions") && !configuredSection(key)) {
+            // An offline/empty home must still expose Settings and All Apps as its recovery route.
+            for (String candidate : sectionOrder) {
+                if (!candidate.equals("actions") && configuredSection(candidate) && populatedSection(candidate)) return false;
+            }
+            return true;
+        }
+        if (!configuredSection(key)) return false;
+        if (key.equals("continue")) return !resumeItems.isEmpty();
+        if (key.equals("weather")) return Prefs.weather() || Prefs.quotes() && HomeData.active().length > 0;
+        return true;
+    }
+
+    private float sectionHeight(String key) {
+        if (key.equals("actions")) return ROW_H;
+        if (key.equals("weather")) return STRIP_H;
+        if (key.equals("apps")) return 206;
+        return ROW_BAND_H - GAP;
+    }
+
+    private void updateSectionLayout() {
+        float top = CHIPS_TOP;
+        for (String key : sectionOrder) {
+            if (!sectionShown(key)) continue;
+            sectionTops.put(key, top);
+            top += sectionHeight(key) + GAP;
+        }
+        sectionDocumentBottom = Math.max(CHIPS_TOP, top - GAP);
+    }
+
+    private void ensureSectionVisible(String key) {
+        updateSectionLayout();
+        if (!sectionShown(key) || !sectionTops.containsKey(key)) return;
+        float top = sectionTops.get(key), bottom = top + sectionHeight(key);
+        float target = pageScroll.target;
+        if (bottom - target > PAGE_BOTTOM - 20) target = bottom - PAGE_BOTTOM + 20;
+        if (top - target < CHIPS_TOP) target = top - CHIPS_TOP;
+        pageScroll.target = Math.max(0, Math.min(pageScrollMax(), target));
+        motionDirty = true;
+        wake();
+    }
+
+    private void chooseDefaultFocus() {
+        if (sectionShown("apps") && !shelf.isEmpty()) {
+            zone = Z_SHELF;
+            shelfIndex = 0;
+        } else {
+            zone = Z_DRAWER;
+            drawerIndex = 0;
+            for (String key : sectionOrder) if (sectionShown(key) && populatedSection(key) && zoneForSection(key) >= 0) {
+                zone = zoneForSection(key);
+                if (zone == Z_RESUME) resumeCol = 0;
+                else if (isRowZone(zone)) rowCol[zone - Z_ROW0] = 0;
+                break;
+            }
+        }
+        ensureSectionVisible(sectionForZone(zone));
+    }
+
+    private boolean moveVertical(int direction, float x) {
+        int current = sectionOrder.indexOf(sectionForZone(zone));
+        for (int at = current + direction; at >= 0 && at < sectionOrder.size(); at += direction) {
+            String key = sectionOrder.get(at);
+            if (!sectionShown(key) || !populatedSection(key)) continue;
+            int group = zoneForSection(key);
+            if (group < 0) continue; // display-only weather never takes focus
+            zone = group;
+            if (group == Z_SHELF) shelfIndex = nearest(tileRects, x);
+            else if (group == Z_DRAWER) drawerIndex = nearest(drawerRects, x);
+            else if (group == Z_RESUME) {
+                resumeCol = nearest(resumeRects, x);
+                ensureRowVisibleResume(resumeCol);
+            } else {
+                int row = group - Z_ROW0;
+                rowCol[row] = nearestRow(row, x);
+                ensureRowVisible(row, rowCol[row]);
+            }
+            ensureSectionVisible(key);
+            return true;
+        }
+        return false;
     }
 
     private void updateSleep() {
@@ -757,9 +926,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             int next = closestPopulatedRow(activeRow);
             if (next >= 0) enterRow(next, activeX);
             else {
-                zone = Z_SHELF;
-                shelfIndex = shelf.isEmpty() ? 0 : nearest(tileRects, activeX);
-                pageScroll.target = 0;
+                chooseDefaultFocus();
                 motionDirty = true;
                 retarget(false);
             }
@@ -828,7 +995,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void layoutRow(int row) {
-        float top = ROWS_TOP + row * ROW_PITCH + ROW_CARD_TOP;
+        float top = rowTopUnits(row) + ROW_CARD_TOP;
         for (int i = 0; i < rowRects[row].length; i++) {
             float left = MARGIN + i * (ROW_CARD_W + ROW_CARD_GAP) - rowOffset[row];
             rowRects[row][i].set(left * k, top * k, (left + ROW_CARD_W) * k, (top + ROW_CARD_H) * k);
@@ -851,14 +1018,21 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void ensurePageScroll(int row) {
-        float top = ROWS_TOP + row * ROW_PITCH;
-        float bottom = top + ROW_BAND_H;
-        float target = pageScroll.target;
-        if (bottom - target > PAGE_BOTTOM) target = bottom - PAGE_BOTTOM;
-        if (top - target < PAGE_TOP) target = top - PAGE_TOP;
-        pageScroll.target = Math.max(0, Math.min(PAGE_SCROLL_MAX, target));
-        motionDirty = true;
-        wake();
+        ensureSectionVisible(rowSection(row));
+    }
+
+    /** Where recommendation row `i` (0..3) sits: the Continue Watching row above takes a pitch when it shows. */
+    private float rowTopUnits(int row) {
+        return ROWS_TOP + (resumeRowShowing() ? ROW_PITCH : 0) + row * ROW_PITCH;
+    }
+
+    private boolean resumeRowShowing() {
+        return configuredSection("continue") && !resumeItems.isEmpty();
+    }
+
+    /** How far the page may scroll: the last row fully above the bottom safe area, plus the 20 slack it always had. */
+    private float pageScrollMax() {
+        return Math.max(0, sectionDocumentBottom - PAGE_BOTTOM + 20);
     }
 
     private int nearestRow(int row, float x) {
@@ -868,15 +1042,234 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int closestPopulatedRow(int from) {
         for (int distance = 1; distance < rowItems.length; distance++) {
             int above = from - distance;
-            if (above >= 0 && !rowItems[above].isEmpty()) return above;
+            if (above >= 0 && sectionShown(rowSection(above)) && !rowItems[above].isEmpty()) return above;
             int below = from + distance;
-            if (below < rowItems.length && !rowItems[below].isEmpty()) return below;
+            if (below < rowItems.length && sectionShown(rowSection(below)) && !rowItems[below].isEmpty()) return below;
         }
         return -1;
     }
 
+    // MARK: - Continue Watching
+
+    /** Reads the entries again: the watch recorded something, the screen came back, or a minute passed. */
+    private void reloadResume() {
+        List<Resume.Entry> next = Prefs.resumeOn() ? Resume.items(getContext()) : new ArrayList<>();
+        boolean was = resumeRowShowing();
+        boolean same = next.size() == resumeItems.size();
+        for (int i = 0; same && i < next.size(); i++) {
+            Resume.Entry a = next.get(i), b = resumeItems.get(i);
+            same = a.pkg.equals(b.pkg) && a.app.equals(b.app) && a.title.equals(b.title) && a.sub.equals(b.sub)
+                    && a.mediaId.equals(b.mediaId) && a.pos == b.pos && a.dur == b.dur && a.at == b.at;
+        }
+        resumeItems = next;
+        java.util.Set<String> artworkKeys = new java.util.HashSet<>();
+        for (Resume.Entry entry : next) artworkKeys.add(Resume.key(entry));
+        resumeArtworkShaders.keySet().retainAll(artworkKeys);
+        if (same) {
+            resumeLayer.invalidate();   // "12 min ago" advances while the home screen stays open
+            return;
+        }
+        if (resumeItems.isEmpty()) {
+            if (was) {
+                resumeFocus = new Spring[0];
+                resumeRects = new RectF[0];
+                resumeCol = 0;
+                resumeOffset = 0;
+                relayoutRows();   // the recommendations move back up; the page range shrinks with them
+                if (zone == Z_RESUME) {
+                    chooseDefaultFocus();
+                    retarget(false);
+                }
+            }
+            resumeLayer.invalidate();
+            return;
+        }
+        if (resumeFocus.length != resumeItems.size()) {
+            Spring[] focus = new Spring[resumeItems.size()];
+            RectF[] rects = new RectF[resumeItems.size()];
+            for (int i = 0; i < resumeItems.size(); i++) {
+                focus[i] = new Spring(0.32f, 0.78f, 0);
+                rects[i] = new RectF();
+            }
+            resumeFocus = focus;
+            resumeRects = rects;
+            resumeCol = Math.min(resumeCol, resumeItems.size() - 1);
+            resumeOffset = 0;
+        }
+        layoutResumeRow();
+        ensureRowVisibleResume(resumeCol);
+        aim(resumeFocus, zone == Z_RESUME ? resumeCol : -1, false);
+        if (was != resumeRowShowing()) relayoutRows();
+        resumeLayer.invalidate();
+    }
+
+    /** The recommendations moved over (the row appeared or vanished): their rects and the page range again. */
+    private void relayoutRows() {
+        for (int i = 0; i < rowLayers.length; i++) place(rowLayers[i], 0, Math.round(rowTopUnits(i) * k));
+        layoutRows();
+        updateSectionLayout();
+        pageScroll.target = Math.min(pageScroll.target, pageScrollMax());
+        motionDirty = true;
+        for (Layer row : rowLayers) row.invalidate();
+        wake();
+    }
+
+    private void layoutResumeRow() {
+        float top = ROWS_TOP + ROW_CARD_TOP;
+        for (int i = 0; i < resumeRects.length; i++) {
+            float left = MARGIN + i * (ROW_CARD_W + ROW_CARD_GAP) - resumeOffset;
+            resumeRects[i].set(left * k, top * k, (left + ROW_CARD_W) * k, (top + ROW_CARD_H) * k);
+        }
+    }
+
+    private void ensureRowVisibleResume(int col) {
+        if (col < 0 || col >= resumeRects.length) return;
+        float minLeft = MARGIN * k, maxLeft = (1920 - MARGIN - ROW_CARD_W) * k;
+        RectF r = resumeRects[col];
+        if (r.left < minLeft) resumeOffset -= (minLeft - r.left) / k;
+        else if (r.left > maxLeft) resumeOffset += (r.left - maxLeft) / k;
+        float contentRight = MARGIN + Math.max(0, resumeRects.length - 1) * (ROW_CARD_W + ROW_CARD_GAP) + ROW_CARD_W;
+        resumeOffset = Math.max(0, Math.min(Math.max(0, contentRight - CONTENT_R), resumeOffset));
+        layoutResumeRow();
+    }
+
+    /** Focus on the Continue Watching row, at the column nearest where the focus was. */
+    private void enterResume(float x) {
+        if (resumeItems.isEmpty()) return;
+        zone = Z_RESUME;
+        resumeCol = nearest(resumeRects, x);
+        ensureRowVisibleResume(resumeCol);
+        ensureSectionVisible("continue");
+        aim(resumeFocus, resumeCol, false);
+        resumeLayer.invalidate();
+    }
+
+    /** The Continue Watching row: each app's card, with a progress bar and where it stopped under it. */
+    private void drawResumeRow(Canvas c) {
+        if (resumeItems.isEmpty() || resumeRects.length != resumeItems.size()) return;
+        applyTone();
+        String title = Ui.tr("Continue Watching");
+        c.drawText(title, MARGIN * k - Ui.leftBearing(rowLabel, title), ROWS_TOP * k + 28 * k, rowLabel);
+        int focused = -1;
+        for (int i = 0; i < resumeItems.size(); i++) {
+            if (resumeFocus[i].value > 0.02f && (focused < 0 || resumeFocus[i].value > resumeFocus[focused].value)) focused = i;
+        }
+        for (int i = 0; i < resumeItems.size(); i++) if (i != focused) drawResumeCard(c, i);
+        if (focused >= 0) drawResumeCard(c, focused);
+    }
+
+    private void drawResumeCard(Canvas c, int index) {
+        Resume.Entry e = resumeItems.get(index);
+        RectF base = resumeRects[index];
+        float focus = Ui.clamp(resumeFocus[index].value), scale = 1 + 0.045f * focus;
+        float cx = base.centerX(), cy = base.centerY() - 5 * k * focus;
+        float bw = base.width(), bh = base.height(), radius = 18 * k;
+        cell.set(cx - bw * scale / 2, cy - bh * scale / 2, cx + bw * scale / 2, cy + bh * scale / 2);
+        c.save();
+        c.translate(cx, cy);
+        c.scale(scale, scale);
+        tmp.set(-bw / 2, -bh / 2, bw / 2, bh / 2);
+        tmp.offset(0, (8 + 10 * focus) * k);
+        shadowDeep.setColor(Ui.alpha(0xFF000000, 0.34f + 0.18f * focus));
+        shadows.draw(c, tmp, radius, DEEP_BLUR * k, shadowDeep);
+        c.restore();
+
+        HomeApps.Item tile = resumeTiles.get(e.pkg);
+        if (tile == null && !e.title.isEmpty()) requestResumeTile(e.pkg);   // in the making: the dark tile stands in until it lands
+        Bitmap art = Resume.artwork(getContext().getApplicationContext(), e, () -> resumeLayer.invalidate());
+        if (e.title.isEmpty()) {
+            fill.setShader(null);
+            fill.setColor(0xFF161618);
+            c.drawRoundRect(cell, radius * scale, radius * scale, fill);
+            fitPaint.set(rowTitle);
+            fitPaint.setTextSize(40 * k);
+            fitPaint.setColor(WHITE);
+            fitPaint.setTextAlign(Paint.Align.CENTER);
+            String name = TextUtils.ellipsize(e.app, fitPaint, cell.width() - 64 * k, TextUtils.TruncateAt.END).toString();
+            c.drawText(name, cell.centerX(), cell.centerY() + Ui.halfCap(fitPaint), fitPaint);
+        } else if (art != null) {
+            String artKey = Resume.key(e);
+            BitmapShader shader = resumeArtworkShaders.get(artKey);
+            if (shader == null) {
+                shader = new BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                resumeArtworkShaders.put(artKey, shader);
+            }
+            roundImage(c, art, shader, cell, radius * scale);
+        } else if (tile != null && tile.tile != null) {
+            roundImage(c, tile.tile, tile.tileShader, cell, radius * scale);
+        } else {
+            fill.setShader(null);
+            fill.setColor(0xFF161618);
+            c.drawRoundRect(cell, radius * scale, radius * scale, fill);
+        }
+        if (e.dur > 0 && e.pos > 0 && e.pos < e.dur) {   // where it stopped, as on Apple TV's Up Next
+            float pad = 16 * k, h = 7 * k, x0 = cell.left + pad, x1 = cell.right - pad, top = cell.bottom - 16 * k;
+            fill.setShader(null);
+            // Dark backing preserves contrast on white app logos as well as bright thumbnail frames.
+            fill.setColor(0xE6101012);
+            c.drawRoundRect(x0 - 5 * k, top - 5 * k, x1 + 5 * k, top + h + 5 * k, 7 * k, 7 * k, fill);
+            fill.setColor(0xFF626268);
+            c.drawRoundRect(x0, top, x1, top + h, h / 2, h / 2, fill);
+            float at = Ui.clamp((float) e.pos / e.dur);
+            if (at > 0f) {
+                fill.setColor(0xE6FFFFFF);
+                c.drawRoundRect(x0, top, x0 + Math.max(h, (x1 - x0) * at), top + h, h / 2, h / 2, fill);
+            }
+        }
+        if (focus > 0.01f) {
+            rim.setShader(null);
+            rim.setStyle(Paint.Style.STROKE);
+            rim.setStrokeWidth(3 * k);
+            rim.setColor(Ui.alpha(WHITE, 0.88f * focus));
+            c.drawRoundRect(cell, radius * scale, radius * scale, rim);
+        }
+        rowTitle.setTextSize(22 * k);
+        fitPaint.set(rowTitle);
+        String caption = TextUtils.ellipsize(Resume.title(e), fitPaint, bw, TextUtils.TruncateAt.END).toString();
+        c.drawText(caption, base.left, base.bottom + 34 * k, rowTitle);
+        String meta = resumeMeta(e);
+        if (!meta.isEmpty()) {
+            rowMeta.setTextSize(18 * k);
+            fitPaint.set(rowMeta);
+            meta = TextUtils.ellipsize(meta, fitPaint, bw, TextUtils.TruncateAt.END).toString();
+            c.drawText(meta, base.left, base.bottom + 62 * k, rowMeta);
+        }
+    }
+
+    /** The small line under a card: the app, then how far it has to go, then when it was last seen. */
+    private static String resumeMeta(Resume.Entry e) {
+        StringBuilder s = new StringBuilder(e.app);
+        String left = Resume.left(e);
+        if (!left.isEmpty()) {
+            if (s.length() > 0) s.append(" · ");
+            s.append(left);
+        }
+        String ago = Resume.ago(e);
+        if (!ago.isEmpty()) {
+            if (s.length() > 0) s.append(" · ");
+            s.append(ago);
+        }
+        return s.toString();
+    }
+
+    /** The card's app tile, made off the UI thread (extracting a banner decodes a bitmap); the row redraws when it's in. */
+    private void requestResumeTile(final String pkg) {
+        if (resumeTiles.containsKey(pkg)) return;   // in the making, or the app has no art to give
+        resumeTiles.put(pkg, null);
+        final Context c = getContext().getApplicationContext();
+        LOADER.execute(() -> {
+            final HomeApps.Item it = HomeApps.tileItem(c, pkg);
+            handler.post(() -> {
+                resumeTiles.put(pkg, it);
+                resumeLayer.invalidate();
+            });
+        });
+    }
+
     private float focusX() {
-        if (isRowZone(zone)) {
+        if (zone == Z_RESUME && resumeCol >= 0 && resumeCol < resumeRects.length) {
+            return resumeRects[resumeCol].centerX();
+        } else if (isRowZone(zone)) {
             int row = zone - Z_ROW0;
             if (rowRects[row] != null && rowCol[row] >= 0 && rowCol[row] < rowRects[row].length) {
                 return rowRects[row][rowCol[row]].centerX();
@@ -1003,6 +1396,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         tilesDirty = drawerDirty = true;
         for (Layer row : rowLayers) row.invalidate();
+        resumeLayer.invalidate();
         sky.invalidate();
         platter.invalidate();
     }
@@ -1776,6 +2170,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Sets the springs' targets from the current focus (snap: no animation). */
     private void retarget(boolean snap) {
+        String active = sectionForZone(zone);
+        if (!sheetOpen && !sleepOpen && (!sectionShown(active) || !populatedSection(active))) chooseDefaultFocus();
         revealShelf(snap);
         boolean focus = !sheetOpen && !sleepOpen;
         boolean tilesChanged = aim(tileFocus, focus && zone == Z_SHELF ? shelfIndex : -1, snap);
@@ -1786,6 +2182,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             boolean changed = aim(rowFocus[i], focus && zone == Z_ROW0 + i ? rowCol[i] : -1, snap);
             if (snap || changed) rowLayers[i].invalidate();
         }
+        boolean resumeChanged = aim(resumeFocus, focus && zone == Z_RESUME ? resumeCol : -1, snap);
+        if (snap || resumeChanged) resumeLayer.invalidate();
         spoken.focusMoved();
     }
 
@@ -1815,7 +2213,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     /** All Apps from the remote's button. Coming back from another app, resume() opens it (it closes the sheet). */
-    void showAllApps() {
+    public void showAllApps() {
         if (!running) {
             allAppsOnResume = true;
             return;
@@ -2155,7 +2553,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     // MARK: - Keys: only the arrows, OK, Back and Settings (system keys pass through to the system)
 
-    boolean onKey(KeyEvent e) {
+    public boolean onKey(KeyEvent e) {
         wake();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (reordering) return reorderKey(e, down);
@@ -2191,7 +2589,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                         okDown = true;
                         okHeld = false;
                         handler.removeCallbacks(holdStart);
-                        holdArmed = sheetOpen ? canToggleShelf(gridIndex) : canReorder();
+                        holdArmed = sheetOpen ? canToggleShelf(gridIndex) : canReorder() || canManageCard();
                         if (holdArmed) handler.postDelayed(holdStart, HOLD_MS);
                     } else if (okDown && holdArmed && e.isLongPress()) {
                         hold();
@@ -2229,9 +2627,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             closeSleepPicker();
         } else if (sheetOpen) {
             closeSheet();
-        } else if (zone != Z_SHELF) {
-            zone = Z_SHELF;
-            pageScroll.target = 0;
+        } else if (zone != Z_SHELF || !sectionShown("apps")) {
+            chooseDefaultFocus();
             motionDirty = true;
             retarget(false);
         } else {
@@ -2269,41 +2666,17 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     ensureRowVisible(row, next);
                     ensurePageScroll(row);
                 }
+            } else if (zone == Z_RESUME && !resumeItems.isEmpty()) {
+                int next = Math.max(0, Math.min(resumeItems.size() - 1, resumeCol + dx));
+                moved = next != resumeCol;
+                resumeCol = next;
+                if (moved) {
+                    ensureRowVisibleResume(next);
+                    ensureSectionVisible("continue");
+                }
             }
         } else if (dy != 0) {
-            if (zone == Z_SHELF) {
-                if (dy < 0 && !drawerItems.isEmpty()) {
-                    openChips();
-                    moved = true;
-                } else if (dy > 0) {
-                    int row = findPopulatedRow(-1, 1);
-                    if (row >= 0) {
-                        enterRow(row, x);
-                        moved = true;
-                    }
-                }
-            } else if (zone == Z_DRAWER) {
-                if (dy > 0) {
-                    zone = Z_SHELF;
-                    if (!shelf.isEmpty()) shelfIndex = nearest(tileRects, x);
-                    moved = true;
-                }
-            } else if (isRowZone(zone)) {
-                int row = zone - Z_ROW0;
-                if (dy < 0 && row == 0) {
-                    zone = Z_SHELF;
-                    if (!shelf.isEmpty()) shelfIndex = nearest(tileRects, x);
-                    pageScroll.target = 0;
-                    motionDirty = true;
-                    moved = true;
-                } else {
-                    int next = findPopulatedRow(row, dy);
-                    if (next >= 0) {
-                        enterRow(next, x);
-                        moved = true;
-                    }
-                }
-            }
+            moved = moveVertical(dy, x);
         }
         if (!moved) return;
         retarget(false);
@@ -2312,7 +2685,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private int findPopulatedRow(int from, int direction) {
         for (int row = from + direction; row >= 0 && row < rowItems.length; row += direction) {
-            if (!rowItems[row].isEmpty()) return row;
+            if (sectionShown(rowSection(row)) && !rowItems[row].isEmpty()) return row;
         }
         return -1;
     }
@@ -2359,6 +2732,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         HomeApps.Item it;
         RectF r;
         float sourceY = 0;
+        Resume.Entry resumeEntry = null;
         if (sleepOpen) {
             pickSleep();
             return;
@@ -2382,6 +2756,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             it = HomeApps.app(p.pkg, Recs.serviceName(p), p.link);
             r = rowRects[row][rowCol[row]];
             sourceY = rowLayers[row].getTranslationY();
+        } else if (zone == Z_RESUME) {
+            if (resumeCol >= resumeItems.size()) return;
+            resumeEntry = resumeItems.get(resumeCol);
+            it = HomeApps.app(resumeEntry.pkg, resumeEntry.app.isEmpty() ? resumeEntry.pkg : resumeEntry.app,
+                    Resume.uri(resumeEntry));
+            it.resume = true;
+            r = resumeRects[resumeCol];
+            sourceY = resumeLayer.getTranslationY();
         } else {
             if (shelf.isEmpty()) return;
             it = shelf.get(shelfIndex);
@@ -2389,6 +2771,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             sourceY = tiles.getTranslationY();
         }
         click.open();
+        Runnable resume = resumeEntry == null ? null : resumeWatch.prepareResume(resumeEntry);
         if (it.kind == HomeApps.ALL_APPS) {
             openSheet();
             return;
@@ -2401,13 +2784,68 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         launchFrom.offset(0, sourceY);
         boolean opened = HomeApps.open(activity, it, this, Math.round(launchFrom.left), Math.round(launchFrom.top),
                 Math.round(launchFrom.width()), Math.round(launchFrom.height()));
+        if (opened && resume != null) handler.postDelayed(resume, 700);
         if (!opened) showToast(Ui.trf("Couldn't open {app}.", "app", it.label));
     }
 
     // MARK: - Holding OK: All Apps puts the app on the shelf or takes it off; on the shelf, the app is lifted to move
 
     private void hold() {
-        if (sheetOpen) toggleShelf(); else startReorder();
+        if (canManageCard()) openCardMenu(); else if (sheetOpen) toggleShelf(); else startReorder();
+    }
+
+    private boolean canManageCard() {
+        return !sheetOpen && !sleepOpen && (zone == Z_RESUME && resumeCol < resumeItems.size()
+                || isRowZone(zone) && rowCol[zone - Z_ROW0] < rowItems[zone - Z_ROW0].size());
+    }
+
+    private void openCardMenu() {
+        if (!canManageCard() || cardMenu != null) return;
+        okHeld = true;
+        holdArmed = false;
+        handler.removeCallbacks(holdStart);
+        final Resume.Entry entry = zone == Z_RESUME ? resumeItems.get(resumeCol) : null;
+        final Recs.Pick pick = entry == null ? rowItems[zone - Z_ROW0].get(rowCol[zone - Z_ROW0]) : null;
+        String action = entry != null ? Ui.tr("Remove from Continue Watching") : Ui.tr("Hide from recommendations");
+        cardMenu = new AlertDialog.Builder(activity, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(entry != null ? Resume.title(entry) : pick.title)
+                .setItems(new String[] {action}, (dialog, which) -> {
+                    if (entry != null) {
+                        Resume.remove(getContext(), entry);
+                        reloadResume();
+                    } else {
+                        recs.hide(pick);
+                        for (int row = 0; row < rowItems.length; row++) {
+                            List<Recs.Pick> remaining = new ArrayList<>(rowItems[row]);
+                            remaining.removeIf(item -> Recs.key(item).equals(Recs.key(pick)));
+                            updateRow(row, remaining);
+                        }
+                        updatePicks();
+                    }
+                    retarget(true);
+                    wake();
+                    spoken.readAgain();
+                })
+                .setNegativeButton(Ui.tr("Cancel"), null)
+                .create();
+        // The release belonging to the hold must not activate the first menu action.
+        cardMenu.setOnKeyListener((dialog, code, event) -> {
+            if (okHeld && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+                    || code == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                if (event.getAction() == KeyEvent.ACTION_UP) okDown = okHeld = false;
+                return true;
+            }
+            return false;
+        });
+        cardMenu.setOnDismissListener(dialog -> {
+            cardMenu = null;
+            okDown = okHeld = holdArmed = false;
+            spoken.readAgain();
+        });
+        cardMenu.show();
+        cardMenu.getWindow().setLayout(Math.round(860 * k), ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardMenu.getListView().setSelection(0);
+        cardMenu.getListView().requestFocus();
     }
 
     /** TalkBack's long click on an app in All Apps (once per press, if the remote's hold also arrives). */
@@ -2656,10 +3094,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             for (int i = 0; i < others.size(); i++) out.add(a11yId(GRID, i));
             return;
         }
-        for (int i = shelfFirst; i < Math.min(shelf.size(), shelfFirst + shelfVisible); i++) out.add(a11yId(Z_SHELF, i));
-        for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
-        for (int row = 0; row < rowItems.length; row++) {
-            for (int i = 0; i < rowItems[row].size(); i++) out.add(a11yId(Z_ROW0 + row, i));
+        for (String key : sectionOrder) {
+            if (!sectionShown(key)) continue;
+            if (key.equals("apps")) {
+                for (int i = shelfFirst; i < Math.min(shelf.size(), shelfFirst + shelfVisible); i++) out.add(a11yId(Z_SHELF, i));
+            } else if (key.equals("actions")) {
+                for (int i = 0; i < drawerItems.size(); i++) out.add(a11yId(Z_DRAWER, i));
+            } else if (key.equals("continue")) {
+                for (int i = 0; i < resumeItems.size(); i++) out.add(a11yId(Z_RESUME, i));
+            } else {
+                int group = zoneForSection(key);
+                if (!isRowZone(group)) continue;
+                int row = group - Z_ROW0;
+                for (int i = 0; i < rowItems[row].size(); i++) out.add(a11yId(group, i));
+            }
         }
     }
 
@@ -2672,6 +3120,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (isRowZone(group)) {
             int row = group - Z_ROW0;
             return i < rowItems[row].size() ? pickText(rowItems[row].get(i)) : "";
+        }
+        if (group == Z_RESUME) {
+            if (i >= resumeItems.size()) return "";
+            Resume.Entry e = resumeItems.get(i);
+            StringBuilder s = new StringBuilder(Resume.title(e));
+            if (!e.sub.isEmpty()) s.append(", ").append(e.sub);
+            if (!e.app.isEmpty()) s.append(". App: ").append(e.app);
+            String left = Resume.left(e);
+            if (!left.isEmpty()) s.append(", ").append(left);
+            return s.toString();
         }
         switch (group) {
             case Z_SHELF:
@@ -2692,6 +3150,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean a11yBounds(int id, Rect out) {
         int group = (id - 1) / 1000, i = (id - 1) % 1000;
         float dy;
+        if (group != GRID && !sectionShown(sectionForZone(group))) return false;
         if (group == GRID) {
             if (!sheetOpen || i >= others.size()) return false;
             float gridWidth = COLUMNS * GRID_W + (COLUMNS - 1) * GRID_GAP;
@@ -2704,6 +3163,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             if (i >= rowRects[row].length) return false;
             a11yRect.set(rowRects[row][i]);
             dy = rowLayers[row].getTranslationY();
+        } else if (group == Z_RESUME) {
+            if (i >= resumeRects.length) return false;
+            a11yRect.set(resumeRects[i]);
+            dy = resumeLayer.getTranslationY();
         } else if (group == Z_SHELF) {
             if (i >= tileRects.length) return false;
             a11yRect.set(tileRects[i]);
@@ -2732,6 +3195,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             int row = zone - Z_ROW0;
             return rowCol[row] < rowItems[row].size() ? a11yId(zone, rowCol[row]) : -1;
         }
+        if (zone == Z_RESUME) return resumeCol < resumeItems.size() ? a11yId(Z_RESUME, resumeCol) : -1;
         switch (zone) {
             case Z_SHELF: return shelf.isEmpty() ? -1 : a11yId(Z_SHELF, shelfIndex);
             case Z_DRAWER: return drawerItems.isEmpty() ? -1 : a11yId(Z_DRAWER, drawerIndex);
@@ -2758,23 +3222,26 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             click.move();
             return;
         }
-        if (sheetOpen || reordering) return;
+        if (sheetOpen || reordering || !sectionShown(sectionForZone(group))) return;
         if (isRowZone(group)) {
             int row = group - Z_ROW0;
             if (i >= rowItems[row].size()) return;
             rowCol[row] = i;
             ensureRowVisible(row, i);
             ensurePageScroll(row);
+        } else if (group == Z_RESUME) {
+            if (i >= resumeItems.size()) return;
+            resumeCol = i;
+            ensureRowVisibleResume(i);
+            ensureSectionVisible("continue");
         } else if (group == Z_DRAWER) {
             if (i >= drawerItems.size()) return;
             drawerIndex = i;
-            pageScroll.target = 0;
-            motionDirty = true;
+            ensureSectionVisible("actions");
         } else if (group == Z_SHELF) {
             if (i >= shelf.size()) return;
             shelfIndex = i;
-            pageScroll.target = 0;
-            motionDirty = true;
+            ensureSectionVisible("apps");
         } else {
             return;
         }
@@ -2800,7 +3267,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** A recommendation shelf with its own horizontal focus and a stable row title. */
     private void drawRow(Canvas c, int row) {
         applyTone();
-        float rowTop = (ROWS_TOP + row * ROW_PITCH) * k;
+        float rowTop = rowTopUnits(row) * k;
         String title;
         switch (row) {
             case 1: title = Ui.tr("Anime"); break;

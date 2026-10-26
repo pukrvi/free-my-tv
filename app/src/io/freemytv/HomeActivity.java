@@ -18,7 +18,7 @@ import android.widget.TextView;
 public class HomeActivity extends Activity {
     /** Opens All Apps (a remote's All Apps button, RemoteKeys). */
     static final String EXTRA_ALL_APPS = "io.freemytv.ALL_APPS";
-    private HomeView home;
+    private HomeSurface home;
     private int prefsVersion = Prefs.version;   // settings changed while we were away: start over
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -39,10 +39,18 @@ public class HomeActivity extends Activity {
             return;
         }
         Ui.init(this);
-        home = new HomeView(this);
-        setContentView(home);
+        home = createHome(this);
+        setContentView(home.asView());
         getWindow().setBackgroundDrawable(null);
         if (getIntent().getBooleanExtra(EXTRA_ALL_APPS, false)) home.showAllApps();
+    }
+
+    static HomeSurface createHome(Activity activity) {
+        switch (Prefs.homeDesign()) {
+            case "simba": return new RepositoryHomeView(activity);
+            case "lamplight": return new LamplightHomeView(activity);
+            default: return new HomeView(activity);
+        }
     }
 
     @Override protected void onResume() {

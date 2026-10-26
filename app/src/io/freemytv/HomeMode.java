@@ -300,11 +300,11 @@ final class HomeMode {
     private static final String NOW_PLAYING = PKG + "/" + PKG + ".NowPlaying";
 
     /**
-     * Home Settings' Now Playing widget reads what apps play through our notification listener, which could read every
-     * notification (ours never does): it's allowed only while the widget is on, in Free My TV mode, and taken back when
-     * the widget goes off, by Original and by the watchdog's revert. Asked when the widget changes and by a screen that
-     * finds it on but not allowed; this process sets it to what the widget says at that moment, so the order the
-     * requests run in doesn't matter.
+     * Home Settings' Now Playing widget, and the home screen's Continue Watching row, read what apps play through our
+     * notification listener, which could read every notification (ours never does): it's allowed only while one of them
+     * is on, in Free My TV mode, and taken back when both go off, by Original and by the watchdog's revert. Asked when a
+     * toggle changes and by a screen that finds it on but not allowed; this process sets it to what the toggles say at
+     * that moment, so the order the requests run in doesn't matter.
      */
     static void nowPlayingAccess(Context c) {
         ModeJob.schedule(c, ModeJob.PLAYING, null, 0);
@@ -322,10 +322,10 @@ final class HomeMode {
         }
     }
 
-    /** The widget as Home Settings (:home) saved it. */
+    /** The toggles as Home Settings (:home) saved them: the listener is wanted while either feature is on. */
     private static boolean nowPlayingOn() {
         Prefs.reload();
-        return Prefs.nowPlaying();
+        return Prefs.nowPlaying() || Prefs.resumeOn();
     }
 
     /** Allows our listener and proves it took (refused, the widget's row shows Unavailable), or takes it back. */

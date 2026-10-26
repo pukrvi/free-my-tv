@@ -110,6 +110,17 @@ final class Prefs {
         version++;
     }
 
+    /** Home design is separate from the light/dark appearance preference. */
+    static String homeDesign() {
+        String value = sp().getString("home-design", "vibe");
+        return "simba".equals(value) || "lamplight".equals(value) ? value : "vibe";
+    }
+
+    static void setHomeDesign(String value) {
+        if (!"vibe".equals(value) && !"simba".equals(value) && !"lamplight".equals(value)) return;
+        put("home-design", value);
+    }
+
     // MARK: - Language and units
 
     /** "auto" or a language code as picked ("pt", "fr", "zh-CN"…); Ui.applyLanguage finds its catalogue. */
@@ -167,6 +178,13 @@ final class Prefs {
     static boolean nowPlaying() { return sp().getBoolean("nowPlaying", false); }
     static void setNowPlaying(boolean on) {   // committed: the main process reads it right away to allow the listener
         sp().edit().putBoolean("nowPlaying", on).commit();
+        version++;
+    }
+
+    /** The Continue Watching row, which remembers what other apps were playing (Resume). Shares the listener's permission. */
+    static boolean resumeOn() { return sp().getBoolean("resumeOn", false); }
+    static void setResume(boolean on) {   // committed, like setNowPlaying: HomeMode reads it right away
+        sp().edit().putBoolean("resumeOn", on).commit();
         version++;
     }
 
