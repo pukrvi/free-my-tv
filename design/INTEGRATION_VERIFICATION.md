@@ -28,3 +28,7 @@ The owner authorized TV standby after completion. The final integration chat sen
 ## Remaining limits
 
 The previous Home/playback baseline passed one approved reboot; the final themes revision was not rebooted. Factory Google TV restoration, spoken TalkBack, every language and Lamplight's timed refresh were not newly hardware-tested. Netflix/Prime exact-title support and reliable automatic resume remain unresolved; JioHotstar artwork is unavailable in the inspected session. A successful app launch does not upgrade those claims. No tagged binary release was created.
+
+## Remote publication
+
+The tested merges and documentation were pushed to `pukrvi/free-my-tv` main, and the remote branch hash was verified. The fork's Actions permissions and workflow definitions are active, but no workflow run/check was registered for the documentation push when inspected. Local checks above passed; remote CI is not claimed as passed. GitHub Pages is not configured for this fork, so this push publishes repository content without establishing a hosted website deployment.
