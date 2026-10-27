@@ -68,7 +68,7 @@ def packages(raw):
         line = line.strip()
         if not line:
             continue
-        if not line.startswith("package:") or not PACKAGE.fullmatch(line[8:]):
+        if not line.startswith("package:") or (line[8:] != "android" and not PACKAGE.fullmatch(line[8:])):
             return None
         found.add(line[8:])
     return found

@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "scope": "Read-only snapshot; no changes, no proof of tracking traffic or speedup.",
+  "device": {
+    "model": "Smart TV Pro",
+    "device": "G10",
+    "android": "12",
+    "sdk": "31"
+  },
+  "inventory_verified": true,
+  "adb_authentication_required": true,
+  "packages": [
+    {
+      "package": "tv.samba.ssm.ui",
+      "state": "disabled",
+      "policy": "already targeted",
+      "category": "acr",
+      "evidence": "Samba viewing recognition",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g10-google-tv/debloat.txt"
+    },
+    {
+      "package": "com.tcl.logkit",
+      "state": "disabled",
+      "policy": "already targeted",
+      "category": "diagnostics",
+      "evidence": "TCL log collection",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g08-eu-android12/debloat.txt"
+    },
+    {
+      "package": "com.tcl.smartalexa",
+      "state": "disabled",
+      "policy": "already targeted",
+      "category": "voice",
+      "evidence": "Alexa; disabling removes that assistant",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g08-eu-android12/debloat.txt"
+    },
+    {
+      "package": "com.google.android.feedback",
+      "state": "enabled",
+      "policy": "review only",
+      "category": "review",
+      "evidence": "Feedback sender; not all Google telemetry",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/tools/privacy.py"
+    },
+    {
+      "package": "com.android.tv.feedbackconsent",
+      "state": "absent",
+      "policy": "review only",
+      "category": "review",
+      "evidence": "Feedback consent/report flow; review together with feedback sender",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/tools/privacy.py"
+    },
+    {
+      "package": "com.google.android.tv.remotecontrol.logging",
+      "state": "absent",
+      "policy": "review only",
+      "category": "review",
+      "evidence": "Remote logging candidate; distinct from Remote Service",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/tools/privacy.py"
+    },
+    {
+      "package": "com.google.android.apps.tv.netoscope",
+      "state": "absent",
+      "policy": "review only",
+      "category": "review",
+      "evidence": "Network diagnostics; verify role on this firmware",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/tools/privacy.py"
+    },
+    {
+      "package": "com.tcl.tv.plus",
+      "state": "absent",
+      "policy": "review only",
+      "category": "review",
+      "evidence": "TCL TV+ content; owner may use it",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g10-google-tv/debloat.txt"
+    },
+    {
+      "package": "com.tcl.smartlink.core",
+      "state": "absent",
+      "policy": "review only",
+      "category": "review",
+      "evidence": "Bundled installer candidate; inspect before any change",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g10-google-tv/debloat.txt"
+    },
+    {
+      "package": "com.tcl.ttvs",
+      "state": "enabled",
+      "policy": "protected",
+      "category": "keep",
+      "evidence": "TIAS/input overlay dependency on G08; not universally telemetry",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g08-eu-android12/debloat.txt"
+    },
+    {
+      "package": "com.tcl.interactive",
+      "state": "enabled",
+      "policy": "protected",
+      "category": "keep",
+      "evidence": "Input/source overlay dependency on G08",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g08-eu-android12/debloat.txt"
+    },
+    {
+      "package": "com.tcl.suspension",
+      "state": "enabled",
+      "policy": "protected",
+      "category": "keep",
+      "evidence": "Source-menu QuickPanel",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g08-eu-android12/debloat.txt"
+    },
+    {
+      "package": "com.tcl.guard",
+      "state": "enabled",
+      "policy": "protected",
+      "category": "keep",
+      "evidence": "Disabling triggered repeated service-start attempts on G08",
+      "source": "https://github.com/Gathin23/cleanyourtv/blob/59b6ac7686a501ec137202d7a8230f9b6550b38b/examples/tcl-g08-eu-android12/debloat.txt"
+    }
+  ],
+  "performance": {
+    "mem_total_kib": 1807396,
+    "mem_available_kib": 642392,
+    "swap_free_kib": 370700,
+    "home_pss_kib": 75457,
+    "frames_since_reset": 257,
+    "janky_frames_since_reset": 84,
+    "limits": "Cumulative gfxinfo counters, not a controlled benchmark or input latency. Null means unavailable. Memory varies with foreground app and cache state."
+  },
+  "manual_review": [
+    "Use the supported system Privacy/Ads control to delete advertising ID where available.",
+    "Review optional usage/diagnostics and actual Samba consent; status was not queried.",
+    "Keep Play Protect, updates, Play services, input and remote services enabled.",
+    "DNS filtering needs a separate network decision; this tool reads no network settings."
+  ]
+}

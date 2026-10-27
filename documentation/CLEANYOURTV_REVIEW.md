@@ -19,16 +19,18 @@ See [`HomeMode`](../app/src/io/freemytv/HomeMode.java).
 This branch incorporates a dependency-free, read-only support audit and offline tests. It does
 **not** change the launcher, Settings, Continue Watching, package-disable policy, security
 services, or network configuration. No APK was installed and nothing was launched on the TV.
-The saved target did not return a usable inventory through the existing ADB connection; live
-package presence, traffic reduction and speed improvements remain unverified. The local-only
-attempt report contains unknowns and is not a before/after benchmark. Confirm the current target
-before repeating device work.
+A follow-up read-only connection on the same day succeeded and confirmed G10 / Android 12.
+It also exposed an inventory-parser bug (the special `android` package), now fixed with a regression
+test. See the [device findings](TCL_G10_AUDIT.md) and [sanitized snapshot](audits/tcl-g10-2026-10-27.json).
+Package states are now verified for that observation; traffic reduction and speed improvements
+remain unmeasured. No privacy/consent settings were changed.
 
 ## Package comparison
 
 The device runbook calls the user's set “TCL Smart TV Pro, Android 12.” CleanYourTV has a closer
-G08 Smart TV Pro Android 12 report, but we have not verified this unit's board/firmware in this
-session. G10/Android 14 lists must not be treated as equivalent to that unit.
+G08 Smart TV Pro Android 12 report, but the follow-up device query identifies the user's unit as
+**G10, Android 12 / SDK 31**. Model names alone do not identify boards. Use the G10 Android 12
+report for candidate discovery; do not transfer Android 14 or G08 behavior as proof of safety.
 
 | Package or group | Vibe TV today | CleanYourTV evidence / decision |
 |---|---|---|
@@ -103,16 +105,16 @@ permission and Original/Google TV plus watchdog recovery.
   failure handling, protected dependencies, numeric parsing and omission of raw diagnostics.
 - [TV_AUDIT.md](TV_AUDIT.md): usage, scope and acceptance criteria.
 
-Validation: seven offline tests passed. `tools/check.sh` passed with JDK 17: Android APK build,
+Validation: the original seven offline tests passed; the follow-up parser regression brings this to eight passing tests. `tools/check.sh` passed with JDK 17: Android APK build,
 269 translation keys, LG and Samsung packaging, ES5 syntax/API checks and legacy CSS checks.
 The isolated build used its newly generated example configuration, not the owner's private one;
 it is a compile/package check only. No installation, active navigation benchmark, reboot, screenshot,
-recovery or packet-capture test was performed. No device result is claimed from the unavailable audit.
+recovery or packet-capture test was performed. The follow-up read-only device results are recorded separately; they do not establish a successful cleanup or benchmark.
 
 ## Suggested next decisions
 
-1. Confirm the TCL target, obtain a valid read-only inventory, and rank only installed/enabled
-   candidates. The new tool is ready for that step. Retain a private baseline report.
+1. Read-only inventory is complete: [current findings](TCL_G10_AUDIT.md). Rank only the installed
+   and enabled candidates; retain this sanitized baseline and keep raw device output private.
 2. Agree whether to apply the supported advertising-ID/diagnostics consent controls and which
    optional components the owner wants off. Before a runtime patch, record exact original states
    and extend the existing reversible HomeMode path, with fail-closed protections unchanged.

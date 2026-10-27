@@ -46,6 +46,12 @@ class AuditTests(unittest.TestCase):
         self.assertTrue(result["inventory_verified"])
         self.assertEqual(result["packages"][0]["state"], "enabled")
 
+    def test_android_framework_package_is_valid_inventory(self):
+        data = dict(self.sample, packages=self.sample["packages"] + "package:android\n")
+        self.assertTrue(audit.report(data, self.rules)["inventory_verified"])
+        self.assertEqual(audit.packages("package:android\n"), {"android"})
+        self.assertIsNone(audit.packages("package:android;reboot\n"))
+
     def test_diagnostics_and_unrequested_private_values_are_not_persisted(self):
         data = dict(self.sample, frames="Error: private-device-id",
                     home_memory="No process found for: io.freemytv:home",
