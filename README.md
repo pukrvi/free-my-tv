@@ -4,7 +4,7 @@
 
 An Android TV home for your apps, recommendations and unfinished watching. Built on [Free My TV](https://github.com/simbasjungles/free-my-tv), with credit to its creators.
 
-[Install](INSTALLATION.md) · [Features](FEATURES.md) · [Hardware & apps](COMPATIBILITY.md) · [Guides and screenshots](documentation/FEATURE_STORIES.md) · [Wiki](https://github.com/pukrvi/vibe-tv/wiki) · [Contribute](CONTRIBUTING.md)
+[Install](INSTALLATION.md) · [Features](FEATURES.md) · [Hardware & apps](COMPATIBILITY.md) · [Documentation](documentation/INDEX.md) · [Wiki](https://github.com/pukrvi/vibe-tv/wiki) · [Contribute](CONTRIBUTING.md)
 
 ![Vibe TV on the tested TCL: shortcuts, weather, apps and Continue Watching](documentation/screenshots/home-playback.png)
 
@@ -12,11 +12,17 @@ TCL Android 12 capture from `3e382d0`. [Build details and provider limits](docum
 
 ## Recommendations from your apps
 
+![Earlier TCL capture of the current TMDB For You and Anime shelves](documentation/screenshots/recommendations-baseline.png)
+
+*Detail from an earlier TCL capture of the existing TMDB shelves. The new Stremio/Kitsu engine is still in development.*
+
 The current For You, Anime, Movies and TV Shows shelves use TMDB picks filtered to installed services. They need your TMDB key. Hold OK on a title to hide it.
 
 A larger recommendation engine using Stremio catalogs is in development. Its new shelves and app routing will be documented after the implementation merges and passes device tests. [Recommendation guide and release status](documentation/FEATURE_STORIES.md#recommendations).
 
 ## Continue Watching on Home
+
+![Continue Watching with real title artwork and progress on the TCL](documentation/feature-assets/continue-watching.png)
 
 See recent titles with artwork and progress, then choose a card with your remote. Enable it in Settings, Widgets, Continue Watching. Hold OK to remove a card.
 
