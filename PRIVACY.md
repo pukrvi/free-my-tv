@@ -20,6 +20,6 @@ Android switching uses the TV's local ADB access to change the launcher/screensa
 
 Keep `config.properties`, API tokens, pairing codes, certificates, signing keys and local environment files private. Public bug reports should omit IP/MAC addresses, serial numbers, account names and raw playback dumps. Share only the minimal sanitized evidence needed to reproduce a problem.
 
-## Optional support cleanup on the TCL audit branch
+## Optional support cleanup in the TCL support workflow
 
 The owner-approved support procedure can reversibly disable Google feedback, Play Movies and printing through HomeMode. It journals original states and is restored through Original recovery or the watchdog. This is not a default removal policy. Calendar sync and functional TCL/security services remain enabled; this does not establish zero telemetry. Profiling reports stay local or contain sanitized counters. See [the device results](documentation/TCL_G10_OPTIMIZATION.md).

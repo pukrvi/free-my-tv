@@ -171,6 +171,7 @@ final class LamplightHomeView extends View implements HomeSurface, HomeData.List
     @Override public void resume() {
         if (running) return;
         running = true;
+        recs.appsChanged();
         data.addListener(this);
         recs.addListener(this);
         rotation = System.currentTimeMillis() / 600000;

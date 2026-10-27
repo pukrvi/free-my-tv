@@ -1,0 +1,4 @@
+test_id,suite_file,test_count,target,kind,created_at,created_by,status,last_verified,notes
+TS-001,tools/tests/AppAvailabilityChecks.java,8,AppAvailability,host-java,2026-10-27,Codex test-builder,passed,2026-10-27,"Production cache: lookup reuse; positive/negative TTL and explicit invalidation; rollback; stale worker after invalidation and concurrent probe"
+TS-002,tools/tests/CleanupRecoveryChecks.java,15,CleanupRecovery,host-java,2026-10-27,Codex test-builder,passed,2026-10-27,"Production HomeMode cleanup engine: optional failure continuation; pending records; retry reconciliation; exact original states; owner-disabled choices; checkpoint-before-mutation and failure; actual-state verification"
+TS-003,tools/test_tv_audit.py,8,tv_audit,host-python,2026-10-27,Codex test-builder,passed,2026-10-27,"Existing offline read-only audit contracts; inventory validation; privacy; command allowlist; timeout handling"

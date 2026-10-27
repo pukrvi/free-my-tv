@@ -249,70 +249,106 @@ final class HomeMode {
                 candidates.retainAll(present);
                 Set<String> needed = neededByTv(adb, candidates);
                 if (needed == null) throw new IOException("Input dependencies unknown");
-                JSONArray journal = s.optJSONArray("supportCleanup");
-                if (journal == null) journal = new JSONArray();
-                List<String> targets = new ArrayList<>();
-                for (String pkg : SUPPORT_PACKAGES) {
-                    if (present.contains(pkg) && mayTurnOff(pkg) && !owners.contains(pkg) && !needed.contains(pkg)) targets.add(pkg);
-                }
-                for (String target : targets) {
-                    boolean known = false;
-                    for (int i = 0; i < journal.length(); i++) if (target.equals(journal.getJSONObject(i).optString("target"))) known = true;
-                    if (known) continue;
-                    int original;
-                    if (target.contains("/")) {
-                        original = c.getPackageManager().getComponentEnabledSetting(android.content.ComponentName.unflattenFromString(target));
-                    } else {
-                        original = c.getPackageManager().getApplicationEnabledSetting(target);
+                List<CleanupRecovery.Entry> journal = cleanupJournal(s);
+                Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
+                CleanupRecovery.Device device = cleanupDevice(c, adb);
+                for (String target : SUPPORT_PACKAGES) {
+                    if (present.contains(target) && mayTurnOff(target) && !owners.contains(target) && !needed.contains(target)) {
+                        CleanupRecovery.disable(target, journal, disabled, device, (entries, off) -> {
+                            saveCleanup(c, entries, off);
+                            record(adb, off);
+                        });
                     }
-                    if (original != 0 && original != 1) continue;   // pre-existing disabled choices stay untouched
-                    journal.put(new JSONObject().put("target", target).put("original", original));
-                    s = state(c);
-                    s.put("supportCleanup", journal);
-                    // Journal before changing anything: interruption can always be recovered.
-                    Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
-                    if (!target.contains("/")) disabled.add(target);
-                    s.put("disabled", new JSONArray(sorted(disabled)));
-                    save(c, s);
-                    if (!journal.toString().equals(String.valueOf(state(c).optJSONArray("supportCleanup")))) {
-                        throw new IOException("Cleanup checkpoint could not be saved");
-                    }
-                    record(adb, disabled);
-                    String answer = adb.shell("pm disable-user --user 0 '" + target + "'");
-                    if (!answer.contains("disabled-user")) throw new IOException("Cleanup refused for " + target);
-                    record(adb, disabled);
                 }
+                record(adb, disabled);
                 return "CLEANUP_OK";
             }
         }
     }
 
-    /** Exact default/enabled state, not a blanket enable; unfinished restores stay journaled. */
+    private static List<CleanupRecovery.Entry> cleanupJournal(JSONObject s) throws JSONException {
+        List<CleanupRecovery.Entry> entries = new ArrayList<>();
+        if (!s.has("supportCleanup")) return entries;
+        JSONArray journal = s.getJSONArray("supportCleanup");
+        for (int i = 0; i < journal.length(); i++) {
+            Object raw = journal.get(i);
+            JSONObject entry = raw instanceof JSONObject ? (JSONObject) raw : null;
+            Object original = entry == null ? null : entry.opt("original");
+            int value = original instanceof Integer ? (Integer) original : -1;
+            entries.add(new CleanupRecovery.Entry(entry == null ? null : entry.optString("target", null), value, raw));
+        }
+        return entries;
+    }
+
+    private static void saveCleanup(Context c, List<CleanupRecovery.Entry> entries, Set<String> disabled) throws Exception {
+        JSONArray journal = new JSONArray();
+        for (CleanupRecovery.Entry entry : entries) {
+            journal.put(entry.source != null ? entry.source
+                    : new JSONObject().put("target", entry.target).put("original", entry.original));
+        }
+        JSONObject s = state(c);
+        s.put("supportCleanup", journal).put("disabled", new JSONArray(sorted(disabled)));
+        save(c, s);
+        if (!journal.toString().equals(String.valueOf(state(c).optJSONArray("supportCleanup")))) {
+            throw new IOException("Cleanup checkpoint could not be saved");
+        }
+    }
+
+    private static CleanupRecovery.Device cleanupDevice(Context c, Adb adb) {
+        return new CleanupRecovery.Device() {
+            @Override public Integer state(String target) throws Exception {
+                android.content.pm.PackageManager pm = c.getPackageManager();
+                try {
+                    if (target.contains("/")) {
+                        android.content.ComponentName component = android.content.ComponentName.unflattenFromString(target);
+                        if (component == null) return null;
+                        // The restore-only component allowlist consists of services. Include disabled services.
+                        pm.getServiceInfo(component, android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                        return pm.getComponentEnabledSetting(component);
+                    }
+                    pm.getApplicationInfo(target, android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                    return pm.getApplicationEnabledSetting(target);
+                } catch (android.content.pm.PackageManager.NameNotFoundException | IllegalArgumentException absent) {
+                    return null;
+                }
+            }
+            @Override public boolean disable(String target) throws Exception {
+                return adb.shell("pm disable-user --user 0 '" + target + "'").contains("disabled-user");
+            }
+            @Override public boolean restore(String target, int original) throws Exception {
+                return adb.shell("pm " + (original == 0 ? "default-state" : "enable") + " --user 0 '" + target + "'")
+                        .contains("new state: " + (original == 0 ? "default" : "enabled"));
+            }
+        };
+    }
+
+    /** Exact default/enabled state; absent, malformed and failed records remain available for later recovery. */
     private static void restoreSupportCleanup(Context c, Adb adb) throws Exception {
         JSONObject s = state(c);
-        JSONArray journal = s.optJSONArray("supportCleanup");
-        if (journal == null) return;
-        Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
-        JSONArray pending = new JSONArray();
-        for (int i = journal.length() - 1; i >= 0; i--) {
-            JSONObject entry = journal.getJSONObject(i);
-            String target = entry.optString("target");
-            boolean allowed = Arrays.asList(SUPPORT_PACKAGES).contains(target) || Arrays.asList(SUPPORT_COMPONENTS).contains(target);
-            int original = entry.optInt("original", -1);
-            if (!allowed || (original != 0 && original != 1)) { pending.put(entry); continue; }
-            int current = target.contains("/")
-                    ? c.getPackageManager().getComponentEnabledSetting(android.content.ComponentName.unflattenFromString(target))
-                    : c.getPackageManager().getApplicationEnabledSetting(target);
-            if (current != original) {
-                String answer = adb.shell("pm " + (original == 0 ? "default-state" : "enable") + " --user 0 '" + target + "'");
-                if (!answer.contains("new state: " + (original == 0 ? "default" : "enabled"))) { pending.put(entry); continue; }
-            }
-            if (!target.contains("/")) disabled.remove(target);
+        CleanupRecovery.Result result = CleanupRecovery.restore(cleanupJournal(s),
+                new HashSet<>(stringList(s, "disabled")),
+                target -> Arrays.asList(SUPPORT_PACKAGES).contains(target) || Arrays.asList(SUPPORT_COMPONENTS).contains(target),
+                cleanupDevice(c, adb));
+        saveCleanup(c, result.pending, result.disabled);
+        record(adb, result.disabled);
+        if (!result.complete()) throw new IOException("Cleanup restoration incomplete");
+    }
+
+    /** Optional support work never gates the factory launcher, setup, screensaver or watchdog restoration. */
+    private static void restoreSupportForRecovery(Context c, Adb adb) {
+        try {
+            restoreSupportCleanup(c, adb);
+        } catch (Exception optionalFailure) {
+            AppLog.w("optional cleanup restoration pending: " + optionalFailure.getMessage());
         }
-        s.put("supportCleanup", pending).put("disabled", new JSONArray(sorted(disabled)));
-        save(c, s);
-        record(adb, disabled);
-        if (pending.length() != 0) throw new IOException("Cleanup restoration incomplete");
+    }
+
+    private static Set<String> pendingSupportPackages(JSONObject s) {
+        Set<String> pending = new HashSet<>();
+        // These opt-in packages are restored exclusively from their exact-state journal, never blanket-enabled.
+        Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
+        for (String target : SUPPORT_PACKAGES) if (disabled.contains(target)) pending.add(target);
+        return pending;
     }
 
     static String supportMeasureNow(Context c) throws Exception {
@@ -589,7 +625,7 @@ final class HomeMode {
     private static void applyOriginal(Context c) {
         JSONObject s = state(c);
         try (Adb adb = connect(c, s)) {
-            restoreSupportCleanup(c, adb);
+            restoreSupportForRecovery(c, adb);
             s = state(c);
             busy(c, Ui.tr("Turning the apps back on…"));
             String home = originalHome(s);
@@ -598,6 +634,8 @@ final class HomeMode {
                 if (!Arrays.asList(DEBLOAT).contains(pkg) && !Arrays.asList(ASSISTANT).contains(pkg)) toEnable.add(pkg);
             }
             toEnable.removeAll(stringList(s, "keptOff"));
+            Set<String> supportPending = pendingSupportPackages(s);
+            toEnable.removeAll(supportPending);
             Set<String> present = packages(adb, "");
             // The TV's home screen first and Google TV's setup app last, after the home screen is back: alone, its
             // recovery screen would take the Home button.
@@ -625,6 +663,7 @@ final class HomeMode {
                     failed.add(GOOGLE_SETUP);
                 }
             }
+            failed.addAll(sorted(supportPending));
             record(adb, new HashSet<>(failed));
             restoreScreensaver(adb, s);
             try {
@@ -717,7 +756,7 @@ final class HomeMode {
                     AppLog.w("could not give the home screen back");
                     return;
                 }
-                restoreSupportCleanup(app, adb);
+                restoreSupportForRecovery(app, adb);
                 s = state(app);
                 // Google TV's setup app only now, with its home screen back (alone, its recovery screen takes Home).
                 if (!keptOff.contains(GOOGLE_SETUP) && adb.shell("pm path " + GOOGLE_SETUP).contains("package:")) {

@@ -18,6 +18,7 @@ Updated October 27, 2026 after combining the three chats into `main`. Home basel
 | History retention | 2 days YouTube, 10 days other services, at most 12 entries; dismissed/expired paused sessions stay removed | `Resume.java`; `tools/tests/HistoryChecks.java` | Metadata depends on streaming apps |
 | Screensaver, photos, remote buttons | Inherited with shared playback integration | `DreamView.java`, `Screensaver.java`, `ScreensaverAlone.java`, `RemoteKeys.java`, `RemoteKeyService.java` | Validate per firmware; preserve recovery |
 | LG/webOS and Samsung/Tizen | Inherited web implementations/package tools | `web/`, `webos/`, `tizen/` | Android themes, section editing and playback parity unverified |
+| TCL performance and optional cleanup | Artwork/scroll work reduced; feedback, Play Movies and printing reversibly disabled on tested G10 Android 12 | `Backdrop.java`, `HomeView.java`, `HomeMode.java`, `AppAvailability.java`, `CleanupRecovery.java` | [Measured results and screenshot](documentation/TCL_G10_OPTIMIZATION.md); final recovery/cache hardening host tested, not reinstalled on TV |
 | Vibe TV identity | Documentation renamed, upstream credited | README and linked guides | Settings header and All Apps entry show Vibe TV; Android’s installed app label, package and artifact names remain unchanged |
 
 ## Evidence and known limits

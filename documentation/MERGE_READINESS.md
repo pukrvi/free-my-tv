@@ -1,55 +1,40 @@
-# Merge readiness review — 27 October 2026
+# Merge readiness — 27 October 2026
 
-**Verdict: not ready for main.** Review-only; no source fixes or TV installation were performed in this pass.
-Compared `origin/main` at `9ee35f5` with implementation HEAD `2554711` (three audit/optimization commits).
-The conversation supplies the spec: preserve Vibe UI, Settings, Continue Watching and reversible recovery;
-leave calendar enabled; keep code off main pending one coordinated documentation/code merge.
+The finalization fixes the three unique blockers found when reviewing optimization implementation
+`2554711` against main baseline `9ee35f5`. The owner explicitly authorized finalizing and pushing to
+main. Code, tests, the README and the measured report are included in one pull request.
 
-## Standards
+## Review findings resolved
 
-1. **P1 — Optional cleanup can block essential recovery.** `HomeMode.java:303–315` can throw when an
-   optional package/component disappears or cannot be restored. `applyOriginal` invokes this at line 592
-   before restoring the factory launcher; watchdog invokes it at line 720 before completing setup,
-   screensaver and listener recovery. This violates CLAUDE's “Keep the way back working.” Optional failures
-   must remain journaled/reported without aborting core recovery; missing targets need explicit handling.
-2. **P2 — An interrupted cleanup can falsely report success on retry.** `HomeMode.java:260–264` skips any
-   journaled target, but journaling occurs before disabling. An interruption/refusal can therefore leave
-   a target enabled permanently while subsequent calls return `CLEANUP_OK`. Reconcile actual state and
-   resume planned changes without overwriting the original restoration state.
-3. **P2 — Shared app cache has incomplete invalidation.** `Recs.installed` now uses an indefinite cache,
-   but only Vibe HomeView invalidates it. Retained Simba/Lamplight clients do not. Changing installed
-   streaming apps can leave recommendation eligibility stale until the process restarts. Centralize
-   freshness handling or restrict caching to the client that supplies correct lifecycle invalidation.
+| Finding | Final behavior | Verification |
+|---|---|---|
+| Optional cleanup could block Original/watchdog recovery | Core restoration catches optional failures; absent, malformed and refused records remain journaled while other targets continue. Pending support packages are excluded from blanket enabling. | Failure-injection host cases plus Android integration source review |
+| Journaled cleanup could falsely succeed on retry | Retry probes actual state, checkpoints before mutation and preserves the first original default/enabled state. Refused changes remain recoverable. | Retry/refusal/checkpoint tests against the production recovery engine |
+| Package availability could remain stale in themes/screensaver | Every process has a 30-second monotonic cache bound; theme/screensaver sessions invalidate sooner. Older workers cannot replace newer results. | Positive/negative expiry, clock rollback, invalidation and concurrent-probe cases |
 
-## Spec
+Standalone support restoration still reports incomplete work. Essential factory launcher, setup,
+screensaver and watchdog recovery proceeds even if an optional restore is incomplete. The three TCL
+component entries are restore-only; firmware refused disabling them in the device session.
 
-1. **P1 — Recovery guarantee is incomplete.** The user required a restorable checkpoint and reversible
-   changes. A failed optional restore must not stop Original or watchdog recovery (same trigger above).
-2. **P2 — The current TCL screensaver also misses invalidation.** Android 12's ScreensaverAlone has its
-   own main-process Recs singleton. No HomeView callback invalidates that process's cache. After first
-   use, installing/disabling a streaming app can leave screensaver recommendations stale indefinitely.
-   This affects the target TV, not just other themes. Invalidate at each client/session start or implement
-   bounded/shared package-change freshness within Recs.
+## Final validation
 
-## Validation
+`tools/run-host-checks.sh` runs 31 offline checks: eight cache scenarios, 15 cleanup scenarios and eight
+Python audit tests. `tests/registry.csv` records these suites. The Android CI gate now runs them too.
+Full local checks use JDK 17, Android platform 34 and locally available build-tools 35.0.0 in isolated
+copies, preserving private configuration and the owner's personalized APK. Exact build-tools 34.0.0
+validation runs in the pull request before merging. Translation, LG/Samsung packaging, legacy web and
+whitespace checks are included.
 
-- Clean working tree at review start; no divergence from the fetched main base.
-- Full checks passed in an isolated copy of committed source: JDK 17, Android platform 34,
-  locally available build-tools 35.0.0. Exact CI build-tools 34.0.0 were unavailable locally.
-- Android build, 271 translation keys, LG/Samsung packaging and legacy web checks passed.
-- Eight Python audit tests and JVM app-availability reuse/invalidation/concurrency checks passed.
-- Existing target-TV optimization/reboot evidence is in TCL_G10_OPTIMIZATION.md; no unsafe failure
-  scenario was induced on the owner's TV during review. Passing prior checks does not cover these bugs.
-- The review skill's issue-tracker configuration is absent; `/setup-matt-pocock-skills` can add it.
-  The supplied conversation was sufficient to review this change without a tracker lookup.
+The Android recovery integration is source reviewed and build checked; these new failure cases were
+not induced on the owner's TV. No new TV install or changes occur during finalization. The installed
+optimization build and its one-restart evidence remain separate from subsequent recovery/cache fixes.
 
-## Documentation handoff
+## Device and documentation evidence
 
-The actual About screenshot is embedded in TCL_G10_OPTIMIZATION.md and stored under
-`screenshots/tcl-g10-about-performance.png`. Keep its historical-baseline caveat in README/Wiki copy.
-Wiki enablement is acknowledged, but no Wiki/README publication or cross-chat message has been sent.
-Prepare final documentation after the three unique correctness issues are fixed and revalidated.
-Code and repository documentation can then share one main PR/merge; GitHub Wiki lives in a separate
-repository and its publication must be coordinated separately from that atomic code merge.
+[TCL_G10_OPTIMIZATION.md](TCL_G10_OPTIMIZATION.md) includes the actual About screenshot, controlled
+measurements, unchanged settings/history checks, privacy cleanup and recovery checkpoint details.
+README includes that screenshot and retains the historical-baseline caveat. Cold launch improvement
+and smoother typical frames are not established. This is a source merge, not a new binary release.
 
-Standards: 3 findings, worst P1 recovery blocker. Spec: 2 findings, worst P1 recovery blocker.
+GitHub Wiki lives in a separate repository and is not part of the atomic code/documentation merge.
+The consolidated documentation chat can publish Wiki material from the checked-in report afterward.

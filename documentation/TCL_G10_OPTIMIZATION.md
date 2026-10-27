@@ -51,7 +51,7 @@ that every process-memory observation improved. Live image-buffer savings and sy
 - Recommendation text truncation is cached; fully offscreen draw work is skipped with shadow margins,
   while ahead-of-navigation artwork preparation is preserved.
 - Section offsets are reused during scrolling. App availability is reused within a visit, with package
-  change/return invalidation and a tested stale-worker race. Known shelf apps skip an unused resolver call.
+  change/return invalidation, a 30-second monotonic freshness bound in every process and tested worker races. Known shelf apps skip an unused resolver call.
 - Native ARM code compilation: `cmd package compile -m speed -f io.freemytv`, confirmed as `speed` after
   reboot. Android had reported `verify` after install. This uses rebuildable code cache, changes no
   preferences/history, and resets with `cmd package compile --reset io.freemytv`. Installing a new APK
@@ -91,7 +91,8 @@ The original rendering/shadow appearance remains.
 Target: G10 Smart TV Pro, Android 12 / SDK 31, Realtek `rtd6748`, 32-bit ARM, four cores, PowerVR BXE-4-32,
 60 Hz display and 1920×1080 app UI. Baseline APK exactly matched the separate `fix/netflix-card-art`
 checkout at `9ee35f5`; the audit branch was rebased onto that source to preserve the installed UI.
-No main merge/push was performed.
+The device-tested optimization implementation is `2554711`. Subsequent recovery/cache hardening
+is covered by host regression tests and the build gate; it has not been installed on the TV.
 
 Android build passed with JDK 17; 271 translation keys, webOS/Tizen packages and legacy web checks passed.
 Eight audit unit tests, package-cache reuse/invalidation/race checks, on-TV artwork pixel/buffer checks,
