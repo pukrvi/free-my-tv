@@ -26,7 +26,7 @@ integrating a new home theme. `stable` remains at `b920f4a`; playback `9d4473b` 
 | YouTube | Title, thumbnail and contrasting progress bar verified with a public Blender video. | Existing session resumes; a video ID can provide a direct video link when the app supplies one. |
 | Stremio | Title/progress confirmed by the user; exact-title fallback artwork verified on the TV. | Reopens Stremio and uses its own saved playback. |
 | JioHotstar | Episode title and duration/progress verified. No thumbnail: live metadata had no artwork, series name or media ID. | App/current episode reopened and published PLAYING with an advancing position. Exact-title deep links are not available from this session. |
-| Netflix | A real PLAYING session had null metadata, null session extras and no session launch intent. It now creates an explicit **Continue in Netflix** card, with an app-name tile rather than a fabricated title. | Card opens Netflix. Automatic playback did not reliably restart; exact-title resume and thumbnails remain unresolved. |
+| Netflix | A real PLAYING session had null metadata, null session extras and no session launch intent. It now creates an explicit **Continue in Netflix** card, with a branded app-art tile rather than a fabricated title or movie thumbnail. | Card opens Netflix. Automatic playback did not reliably restart; exact-title resume and thumbnails remain unresolved. |
 | Prime Video | Observed sessions supplied only **PrimeVideo** rather than the content title. App-level **Continue in Prime Video** fallback is implemented and covered by data tests. | App launch verified; reliable content capture and automatic resume remain unverified. |
 
 Android’s Watch Next and preview-program providers were empty during this check, so they offered no alternative title or
@@ -64,3 +64,18 @@ Viewing history is private app data on the TV. Media notifications are not read.
 may be fetched; a known YouTube ID can fetch a public thumbnail, and exact movie/show title lookups may be sent to TMDB
 when session artwork is absent. README’s privacy section reflects these requests. Credentials and full signed playback
 URLs must never be printed or committed.
+
+## Branded-card and gallery polish — 27 October 2026
+
+Runtime `3e382d0` changes the Vibe TV 1 card renderer to request app art even when a provider supplies no content title.
+Netflix now uses its installed app artwork through the same tile path as JioHotstar. Real content artwork still takes
+priority; text is a temporary fallback only if app artwork is unavailable. This is a visual change: Netflix/Prime
+exact-title capture, thumbnails and reliable automatic resume remain unresolved as recorded above.
+
+Built and installed with Java 17 / platform 34 / build-tools 34.0.0. Full `tools/check.sh` passed, including all 271
+translation keys, generic LG/Samsung packaging and legacy web checks. Both 1920 × 1080 captures were inspected at original
+resolution. The user-requested gallery view was prepared with the existing long-press removal menu: Netflix, JioHotstar
+and an older logo-only YouTube entry were dismissed, leaving YouTube and Stremio artwork/progress. Home return confirmed
+those entries stayed removed. The normal dock apps remain present. This pass did not repeat provider playback or the
+19 data-regression cases, since session handling and storage did not change. Current images and provenance are in
+[documentation/SCREENSHOTS.md](documentation/SCREENSHOTS.md).

@@ -8,7 +8,7 @@ A remote-first home for Android TV: your apps, useful weather, and room to keep 
 
 ![Vibe TV development build on the TCL test TV: shortcuts, weather, app dock and Continue Watching](documentation/screenshots/home-playback.png)
 
-*TCL home capture from the integrated Settings + playback baseline (`e740614`), October 27, 2026. The Settings capture below is updated to `b88a229`; see the [capture record](documentation/SCREENSHOTS.md). Android’s installed app label and package identifiers remain unchanged.*
+*Actual TCL capture from `3e382d0`, October 27, 2026: YouTube/Stremio artwork and the clearer Settings menu. [Capture details and provider limits](documentation/SCREENSHOTS.md). Android’s installed app label and package identifiers remain unchanged.*
 
 ## The experience
 
