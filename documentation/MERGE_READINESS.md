@@ -20,10 +20,11 @@ component entries are restore-only; firmware refused disabling them in the devic
 
 `tools/run-host-checks.sh` runs 31 offline checks: eight cache scenarios, 15 cleanup scenarios and eight
 Python audit tests. `tests/registry.csv` records these suites. The Android CI gate now runs them too.
-Full local checks use JDK 17, Android platform 34 and locally available build-tools 35.0.0 in isolated
-copies, preserving private configuration and the owner's personalized APK. Exact build-tools 34.0.0
-validation runs in the pull request before merging. Translation, LG/Samsung packaging, legacy web and
-whitespace checks are included.
+Full local checks passed with JDK 17, Android platform 34 and build-tools 35.0.0 in isolated
+copies, preserving private configuration and the owner's personalized APK. The full gate was then
+rerun successfully with exact CI build-tools 34.0.0, obtained from Google with its repository checksum
+verified. Translation, LG/Samsung packaging, legacy web and whitespace checks passed. GitHub reported
+the PR mergeable/clean but started no Actions runs for this fork; no remote CI pass is claimed.
 
 The Android recovery integration is source reviewed and build checked; these new failure cases were
 not induced on the owner's TV. No new TV install or changes occur during finalization. The installed
