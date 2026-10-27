@@ -1,0 +1,28 @@
+{
+  "continue_watching": {
+    "status": "landed",
+    "commit": "3e382d0",
+    "screenshot": "documentation/screenshots/home-playback.png",
+    "observed": ["YouTube and Stremio artwork", "titles and progress on the home screen"],
+    "limits": ["Does not visually establish exact episode or saved-position reopening", "PR #28 is separate until merged", "Provider support differs"]
+  },
+  "privacy": {
+    "status": "landed",
+    "before": "docs/assets/before.webp",
+    "before_kind": "inherited upstream stock-home illustration; not a same-TCL capture",
+    "after": "documentation/screenshots/home-playback.png",
+    "after_kind": "actual TCL capture",
+    "source": "documentation/TCL_G10_OPTIMIZATION.md",
+    "observed": ["No sponsored launcher rows", "Google feedback, Play Movies and printing disabled reversibly in the TCL test"],
+    "limits": ["No matched tracker before/after measurement", "No measured trackers-blocked count", "Does not block in-app advertising or all firmware telemetry"]
+  },
+  "recommendations": {
+    "status": "pending",
+    "commit": null,
+    "screenshot": null,
+    "owner_thread": "01a17b99-8935-7183-8331-8bb15583b8ce",
+    "approved_copy": [],
+    "limitations": [],
+    "gate": "Wait for merged implementation, verified routing/source details and reviewed actual-device screenshot. Do not publish a simulated working-engine image."
+  }
+}

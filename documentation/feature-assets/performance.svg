@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080" width="1920" height="1080" role="img"><title>Three measured performance states with explicit units and snapshot caveats</title><desc>Evidence-led Vibe TV feature scene. Editable vector text and shapes with embedded raster evidence.</desc><rect width="1920" height="1080" fill="#101214"/>
+<g id="brand">
+<text x="80" y="80" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="30" font-weight="700">VIBE TV</text>
+<text x="80" y="128" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="400">03 / MEASURED ON OUR TCL</text>
+</g>
+<g id="headline">
+<text x="80" y="235" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="78" font-weight="700">Less waiting. More room.</text>
+</g>
+<g id="metric-labels">
+<text x="660" y="338" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">HOME RESPONSE / ms / lower is better</text>
+<text x="1260" y="338" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">AVAILABLE MEMORY / MiB / higher is better</text>
+</g>
+<g id="state-original">
+<rect x="72" y="390" width="1776" height="140" rx="24" fill="#101214" stroke="#454B50" stroke-width="2"/>
+<text x="100" y="440" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">Original Google TV</text>
+<text x="100" y="487" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">Retained historical baseline</text>
+<rect x="660" y="427" width="258.0" height="48" rx="10" fill="#69737B" stroke="#69737B" stroke-width="2"/>
+<text x="936.0" y="462" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">150 ms</text>
+<rect x="1260" y="427" width="283.8" height="48" rx="10" fill="#69737B" stroke="#69737B" stroke-width="2"/>
+<text x="1561.8" y="462" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">594 MiB</text>
+</g>
+<g id="state-vanilla">
+<rect x="72" y="555" width="1776" height="140" rx="24" fill="#101214" stroke="#454B50" stroke-width="2"/>
+<text x="100" y="605" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">Vibe TV / before</text>
+<text x="100" y="652" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">Earlier owner-reported reading</text>
+<rect x="660" y="592" width="376.68" height="48" rx="10" fill="#69737B" stroke="#69737B" stroke-width="2"/>
+<text x="1054.68" y="627" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">219 ms</text>
+<rect x="1260" y="592" width="324.8888888888889" height="48" rx="10" fill="#69737B" stroke="#69737B" stroke-width="2"/>
+<text x="1602.888888888889" y="627" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">680 MiB</text>
+</g>
+<g id="state-optimized">
+<rect x="72" y="720" width="1776" height="140" rx="24" fill="#101214" stroke="#F5F5F4" stroke-width="2"/>
+<text x="100" y="770" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">Vibe TV / optimized</text>
+<text x="100" y="817" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">After optimization + one restart</text>
+<rect x="660" y="757" width="154.8" height="48" rx="10" fill="#E8C97D" stroke="#E8C97D" stroke-width="2"/>
+<text x="832.8" y="792" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="700">90 ms</text>
+<rect x="1260" y="757" width="373.6222222222222" height="48" rx="10" fill="#E8C97D" stroke="#E8C97D" stroke-width="2"/>
+<text x="1651.6222222222223" y="792" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="700">782 MiB</text>
+</g>
+<g id="disclosure">
+<text x="80" y="974" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="25" font-weight="400">Historical snapshots, not a controlled three-way benchmark. Reboot and cache state affect memory.</text>
+<text x="80" y="1024" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">Original: retained reading. Before: owner report. Optimized: after restart. Source: TCL_G10_OPTIMIZATION.md</text>
+</g>
+</svg>

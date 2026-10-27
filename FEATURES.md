@@ -2,9 +2,7 @@
 
 [Project](README.md) · [Compatibility](COMPATIBILITY.md) · [Contributing](CONTRIBUTING.md)
 
-Updated October 27, 2026 after combining the three chats into `main`. Home baseline `b920f4a`, playback `9d4473b` and Settings `e740614` are preserved in merge history. The integrated runtime matches the final device-tested Settings source exactly; the playback regression tools are also retained. This is a source integration, not a tagged binary release.
-
-**Device checked** means only the physical-TV paths described below. **Inherited** means upstream behavior without new fork verification. A passing build alone does not establish device support.
+The October 27, 2026 integration combined Home `b920f4a`, playback `9d4473b` and Settings `e740614`. Later Settings polish, branded fallbacks and TCL optimization are recorded in the linked reports. The table separates device checks from inherited support; build success alone does not prove device behavior. No tagged binary release is announced here.
 
 | Area | Status and scope | Implementation | Limits / next work |
 |---|---|---|---|
