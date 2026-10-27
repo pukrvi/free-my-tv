@@ -65,3 +65,9 @@ After runtime changes, capture an identifiable combined build and record commit,
 ![TMDB For You and Anime shelves on the TCL](screenshots/recommendations-baseline.png)
 
 A detail crop of the earlier `feedback-anime.png` hardware capture: source rectangle `(0, 290, 1920, 1080)`, exported at 1920 × 790. The crop removes the Continue Watching history above the recommendation shelves; the remaining pixels are unchanged. It shows the existing TMDB For You and Anime rows, not the new Stremio/Kitsu engine. The exact source build hash was not recorded alongside this capture. Titles and app names are catalog recommendations, not an account-history claim. The full source stays local under `/tmp/free-my-tv-tv-check/`.
+
+## Latest recommendation feedback build
+
+![Fresh For Me and Anime Airing capture on the TCL](screenshots/recommendations-current.png)
+
+Captured directly from the TCL Android 12 TV on 27 October 2026 using runtime `4f14037` (`feedback-stremio-quick-fixes-20261027`). This is the unchanged 1920 × 1080 screenshot: For Me and Anime Airing are fully visible, with New Movies starting below. It contains catalog titles/provider labels, no viewing-history row or personal settings. Artwork and scrolling were checked; the picture does not prove exact-title routing or performance improvement. The earlier TMDB capture above remains historical evidence.

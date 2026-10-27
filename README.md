@@ -12,9 +12,9 @@ TCL Android 12 capture from `3e382d0`. [Build details and provider limits](docum
 
 ## Recommendations from your apps
 
-![Earlier TCL capture of the current TMDB For You and Anime shelves](documentation/screenshots/recommendations-baseline.png)
+![For Me and Anime Airing on the latest tested TCL build](documentation/screenshots/recommendations-current.png)
 
-*Historical capture of the earlier TMDB shelves; the feedback build now has twelve recommendation shelves.*
+*Fresh TCL Android 12 capture, 27 October 2026, runtime `4f14037`: For Me, Anime Airing and New Movies. [Capture details](documentation/SCREENSHOTS.md#latest-recommendation-feedback-build).*
 
 The Android Vibe TV 1 feedback build combines TMDB, Anime Kitsu and Streaming Catalogs across twelve shelves. Public add-on catalogs need no signup; TMDB enrichment needs your own key. Hold OK on a title to hide it.
 

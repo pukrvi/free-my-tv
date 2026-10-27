@@ -6,11 +6,11 @@ Use these guides to install Vibe TV, understand its features, or test it on anot
 
 ## Recommendations
 
-![Existing TMDB recommendation shelves on the TCL](screenshots/recommendations-baseline.png)
+![Latest For Me and Anime Airing shelves on the TCL](screenshots/recommendations-current.png)
 
-The current For You, Anime, Movies and TV Shows shelves use TMDB picks filtered to installed services. This earlier TCL detail capture shows For You and Anime. The new Stremio/Kitsu engine remains in development; this image does not show that implementation.
+The Android feedback build combines TMDB, Anime Kitsu and Streaming Catalogs across twelve shelves. This fresh TCL capture shows For Me, Anime Airing and New Movies. Exact-title routing and broader device acceptance remain pending.
 
-[Recommendation behavior and upcoming work](FEATURE_STORIES.md#recommendations) · [Capture provenance](SCREENSHOTS.md#current-recommendation-shelves-earlier-capture)
+[Recommendation behavior and upcoming work](FEATURE_STORIES.md#recommendations) · [Capture provenance](SCREENSHOTS.md#latest-recommendation-feedback-build)
 
 ## Continue Watching
 
