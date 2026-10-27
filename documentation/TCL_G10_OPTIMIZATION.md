@@ -12,6 +12,16 @@ These are snapshots from the existing About measurement, not a controlled compar
 Reboot and cache/heap state contribute to memory differences. The factory launcher's historical 150 ms
 was not remeasured; no factory-mode switch was performed.
 
+## Actual TV About screen
+
+![TCL Android 12 About screen showing saved Original and refreshed Vibe TV measurements](screenshots/tcl-g10-about-performance.png)
+
+Captured directly from the TV on 27 October 2026, after the optimization/restart session; inspected at
+1920×1080. Vibe TV shows **90 ms Home button, 782 MB available, 71 MB Home process memory**.
+The Original column (**150 ms / 594 MB / 124 MB**) is the app's retained historical baseline, not a fresh
+same-restart Google TV benchmark. The screen labels binary MiB values as MB. No identifiers,
+account details, network addresses or viewing history are visible in this capture.
+
 ## Controlled measurements and limits
 
 | Phase | Warm Home median | Cold process launch | Navigation median frame | Deadline misses |
