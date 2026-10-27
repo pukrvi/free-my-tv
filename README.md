@@ -2,67 +2,60 @@
 
 **No Ads, No Bloat, Only Vibes.**
 
-A remote-first home for Android TV: your apps, useful weather, and room to keep watching. Open source, built on [Free My TV](https://github.com/simbasjungles/free-my-tv), with full credit to its creators.
+An Android TV home for your apps, recommendations and unfinished watching. Built on [Free My TV](https://github.com/simbasjungles/free-my-tv), with credit to its creators.
 
-[Install](INSTALLATION.md) · [Feature status](FEATURES.md) · [Hardware & apps](COMPATIBILITY.md) · [Contribute](CONTRIBUTING.md) · [Screenshots](documentation/SCREENSHOTS.md) · [Design](DESIGN.md) · [Wiki](https://github.com/pukrvi/vibe-tv/wiki)
+[Install](INSTALLATION.md) · [Features](FEATURES.md) · [Hardware & apps](COMPATIBILITY.md) · [Guides and screenshots](documentation/FEATURE_STORIES.md) · [Wiki](https://github.com/pukrvi/vibe-tv/wiki) · [Contribute](CONTRIBUTING.md)
 
-![Vibe TV development build on the TCL test TV: shortcuts, weather, app dock and Continue Watching](documentation/screenshots/home-playback.png)
+![Vibe TV on the tested TCL: shortcuts, weather, apps and Continue Watching](documentation/screenshots/home-playback.png)
 
-*Actual TCL capture from `3e382d0`, October 27, 2026: YouTube/Stremio artwork and the clearer Settings menu. [Capture details and provider limits](documentation/SCREENSHOTS.md). Android’s installed app label and package identifiers remain unchanged.*
+TCL Android 12 capture from `3e382d0`. [Build details and provider limits](documentation/SCREENSHOTS.md).
 
-## The experience
+## Recommendations from your apps
 
-- **A quiet home.** No sponsored launcher rows or autoplaying launcher promotions. Streaming apps retain their own ads and subscriptions.
-- **Your remote, your apps.** A generous app dock, All Apps, inputs, live TV, and sleep controls.
-- **Weather at a glance.** Current conditions, six hours and six days together, sunrise and sunset.
-- **Recommendations by shelf.** For You, Anime, Movies and TV Shows; picks require your own TMDB key.
-- **Continue Watching, opt-in.** Playback history from the metadata apps share. YouTube resume has been tested; Netflix and Prime have known metadata limits. [App-by-app results](COMPATIBILITY.md#streaming-app-results).
-- **Settings for a TV.** A Vibe TV header and one continuous settings document. **Themes** chooses the home design, **Home Layout** arranges Vibe TV 1’s sections, and **Preferences** holds language, temperature, appearance and sounds. Each has a distinct icon; moving down the left rail reveals its content immediately.
-- **Three home designs.** Vibe TV 1, Simba (Free-My-TV) and Lamplight, with Google TV last as the factory-home recovery choice. Vibe TV 1 lets you reorder or hide home sections.
-- **A way back.** Android mode switching disables selected packages rather than uninstalling them, with Original mode and a crash watchdog. This still changes the TV: read the installation guide first.
+The current For You, Anime, Movies and TV Shows shelves use TMDB picks filtered to installed services. They need your TMDB key. Hold OK on a title to hide it.
 
-## Where the project stands
+A larger recommendation engine using Stremio catalogs is in development. Its new shelves and app routing will be documented after the implementation merges and passes device tests. [Recommendation guide and release status](documentation/FEATURE_STORIES.md#recommendations).
 
-Home, playback and Settings have been integrated into `main` after their device checks. This remains an actively developed source build. The public name is **Vibe TV**; its Android package remains `io.freemytv` and its APK remains `FreeMyTV.apk` so existing installations can keep receiving updates signed with the same key. The repository is `pukrvi/vibe-tv`. No new published Vibe TV release is claimed here.
+## Continue Watching on Home
 
-The primary target is a TCL Smart TV Pro running Android 12, with a 1920 × 1080 reference layout. Other hardware support comes from upstream until a contributor supplies a Vibe TV test report. LG/webOS and Samsung/Tizen packaging is retained, but those interfaces have not been verified to match the latest Android work.
+See recent titles with artwork and progress, then choose a card with your remote. Enable it in Settings, Widgets, Continue Watching. Hold OK to remove a card.
 
-![Vibe TV Settings: Themes, Home Layout and Preferences](documentation/screenshots/settings-themes.png)
+YouTube and Stremio artwork/progress are verified on our TCL. Exact-title and saved-position reopening depend on the app; Netflix and Prime still have metadata limits. [Working examples and app-by-app results](documentation/FEATURE_STORIES.md#continue-watching).
 
-**Themes** changes the home design. **Home Layout** moves or hides Vibe TV 1 sections. **Preferences** changes language, temperature, light/dark appearance and sounds. Open **Settings** from the home shortcut; **TV Settings** opens Android’s own controls.
+## Performance on our TCL
 
-The [feature register](FEATURES.md) records what exists, where its code lives, what was tested, and what remains unfinished. The [compatibility register](COMPATIBILITY.md) distinguishes launching an app from actually recording and resuming a title.
+![Home response and available memory: Original Google TV, Vibe before optimization, and optimized Vibe](documentation/performance/comparison.png)
 
-## TCL performance and privacy
+The snapshots show Home response changing from 219 to 90 ms and available memory from 680 to 782 MiB after optimization and a restart. These readings came from different conditions. The Google TV values are historical, and reboot/cache state affects RAM.
 
-On the tested TCL Smart TV Pro running Android 12, Vibe TV now avoids unused portrait artwork and prepares glass backgrounds only when needed. The theme, Settings and Continue Watching remain unchanged. Optional Google feedback, Play Movies and printing cleanup is reversible; Calendar sync stays enabled.
+A separate controlled test measured warm Home returns at 80 versus 63 ms, about 21% lower. Better cold starts and typical frame times were not established. [Full data, percentage graphics and test method](documentation/TCL_G10_OPTIMIZATION.md).
 
-![Original Google TV, Vibe TV before optimization, and optimized Vibe TV: Home response and available memory](documentation/performance/comparison.png)
+## Stremio catalog add-ons
 
-| About snapshot | Original Google TV | Vibe TV before optimization | Vibe TV optimized + restart |
-|---|---:|---:|---:|
-| Home response · lower is better | 150 ms | 219 ms | **90 ms** |
-| Available memory · higher is better | 594 MiB | 680 MiB | **782 MiB** |
-| Home process memory · lower is better | 124 MiB | Not recorded | **71 MiB** |
+Two catalog integrations are being developed: Anime Kitsu and Streaming Catalogs. They supply discovery metadata; they are not a general plug-in installer or a video-stream resolver.
 
-These are **historical snapshots, not a controlled three-way benchmark**. Original is the retained factory baseline; the middle reading was reported by the owner; the optimized reading followed a restart. Reboot and cache state affect RAM. Controlled warm Home returns improved from 80 to 63 ms (about 21%); cold launch and typical frame times did not improve consistently. [Raw evidence, recovery details and limitations](documentation/TCL_G10_OPTIMIZATION.md).
+Contributors can build and test another catalog adapter in code. Support for an arbitrary add-on has to be verified; it is not promised by these two integrations. [Add-on scope and contribution requirements](documentation/ADDONS.md).
 
-![Performance highlights: 59% lower Home response time and 15% more available RAM versus pre-optimization Vibe; 43% lower Home process memory versus historical Google TV](documentation/performance/highlights.png)
+## Fewer launcher ads, optional cleanup
 
-[Download the comparison](documentation/performance/comparison.png) · [Download the shareable highlights](documentation/performance/highlights.png) · [Data, formulas and reproduction](documentation/performance/README.md)
+Vibe TV has no sponsored launcher rows or autoplaying launcher promos. In the TCL support test, Google feedback, Play Movies and printing were disabled reversibly. Calendar sync and protected TV services stayed enabled.
 
-## Try it or help build it
+Streaming apps keep their own ads and privacy practices. The cleanup does not block all TCL telemetry or provide a measured tracker-blocking count. [Visual comparison, audit and recovery](documentation/FEATURE_STORIES.md#ads-and-optional-collection).
 
-Follow [INSTALLATION.md](INSTALLATION.md) to build and install this fork. A generic build needs no private configuration and has no TMDB recommendations:
+## Try it or contribute
+
+Follow [installation](INSTALLATION.md) to build this fork. A generic build has no private configuration or TMDB recommendations:
 
 ```sh
 ./build.sh --generic
 ```
 
-Contributions include bug reports, translations, documentation, remote navigation checks and hardware reports. If you fork or test Vibe TV, please submit your **exact manufacturer/model, OS and firmware, tested commit, app versions, and which actions worked or failed** using the [hardware report template](.github/ISSUE_TEMPLATE/hardware_report.yml). This is a community request, not an extra license restriction.
+Vibe TV 1, Simba (Free-My-TV) and Lamplight are selectable homes. Vibe TV 1 has section ordering and visibility controls; Google TV remains the recovery choice. The primary test target is TCL Smart TV Pro, Android 12, at 1920 × 1080. Other hardware and the inherited LG/Samsung builds need their own test reports.
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md). The [GitHub Wiki](https://github.com/pukrvi/vibe-tv/wiki) has the navigable guides; [wiki publication](documentation/WIKI.md) explains how its separate repository stays in sync. Device work follows [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). [Privacy](PRIVACY.md), [security reporting](SECURITY.md), and [credits](CREDITS.md) explain the boundaries and provenance.
+Settings says Vibe TV; Android's installed app label remains Free My TV, package `io.freemytv`, APK `FreeMyTV.apk`. Updates need the same signing key. No tagged Vibe TV binary release is claimed here.
 
-## License
+If you fork or test it, please report the exact model, firmware, commit and app versions, with what worked and what failed. Start with [CONTRIBUTING.md](CONTRIBUTING.md) or the [hardware report](.github/ISSUE_TEMPLATE/hardware_report.yml).
 
-[MIT](LICENSE). Preserve the upstream copyright and license notices when redistributing.
+The wiki is generated from these same guides. [Publication workflow](documentation/WIKI.md) · [Editable assets and video plan](documentation/feature-assets/ASSET_GUIDE.md) · [Privacy](PRIVACY.md) · [Security](SECURITY.md) · [Credits](CREDITS.md)
+
+[MIT license](LICENSE). Preserve upstream notices when redistributing.

@@ -2,7 +2,7 @@
 
 Vibe TV is a fork of [Free My TV by simbasjungles](https://github.com/simbasjungles/free-my-tv). The original launcher, build tooling, platform integrations, safety mechanisms, and much of the documentation originate there. Thank you to the upstream maintainers and contributors.
 
-This fork develops the Vibe TV home experience, settings navigation, and playback history. Its repository is [pukrvi/free-my-tv](https://github.com/pukrvi/free-my-tv); the repository URL and installed identifiers have not been renamed. `freemytv.io` is the upstream website. Upstream releases, performance measurements, and compatibility reports must not be presented as new Vibe TV verification.
+Vibe TV develops the home layout, Settings and playback history in [pukrvi/vibe-tv](https://github.com/pukrvi/vibe-tv). Android package and artifact names retain the original identifiers. `freemytv.io` belongs to upstream; its releases, measurements and device reports are separate from this fork's tests.
 
 ## Dependencies and acknowledgements
 

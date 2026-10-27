@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080" width="1920" height="1080" role="img"><title>Two Stremio catalog adapters in development</title><desc>Evidence-led Vibe TV feature scene. Editable vector text and shapes with embedded raster evidence.</desc><rect width="1920" height="1080" fill="#101214"/>
+<g id="brand">
+<text x="80" y="80" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="30" font-weight="700">VIBE TV</text>
+<text x="80" y="128" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="400">DRAFT / STREMIO CATALOG ADD-ONS</text>
+</g>
+<g id="headline">
+<text x="80" y="232" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="78" font-weight="700">Two catalog sources.</text>
+<text x="80" y="330" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="78" font-weight="700">More ways to discover.</text>
+</g>
+<g id="anime-kitsu">
+<rect x="80" y="430" width="840" height="185" rx="24" fill="#1C1F22" stroke="#F5F5F4" stroke-width="2"/>
+<text x="120" y="500" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="43" font-weight="700">Anime Kitsu</text>
+<text x="120" y="550" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">Anime metadata, airing order and season links</text>
+</g>
+<g id="streaming-catalogs">
+<rect x="1000" y="430" width="840" height="185" rx="24" fill="#1C1F22" stroke="#F5F5F4" stroke-width="2"/>
+<text x="1040" y="500" fill="#F5F5F4" font-family="Inter,Arial,sans-serif" font-size="43" font-weight="700">Streaming Catalogs</text>
+<text x="1040" y="550" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">Movie and show catalog metadata</text>
+</g>
+<g id="adapter-scope">
+<rect x="80" y="680" width="1760" height="165" rx="24" fill="#1C1F22" stroke="#454B50" stroke-width="2"/>
+<text x="120" y="750" fill="#E8C97D" font-family="Inter,Arial,sans-serif" font-size="30" font-weight="700">CATALOG METADATA / TWO DRAFT ADAPTERS</text>
+<text x="120" y="800" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="400">Other catalogs need contributor code and tests. There is no arbitrary add-on installer.</text>
+</g>
+<g id="disclosure">
+<text x="80" y="974" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="25" font-weight="400">In development. The expanded recommendation implementation and device validation are pending.</text>
+<text x="80" y="1024" fill="#ADB3B8" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="400">The draft does not execute streams, subtitles or player plug-ins. Source and limits: documentation/ADDONS.md</text>
+</g>
+</svg>
