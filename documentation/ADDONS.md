@@ -13,7 +13,7 @@ The recommendation work is testing two catalog adapters alongside the existing T
 | [Anime Kitsu](https://anime-kitsu.strem.fun/manifest.json) | `community.anime.kitsu` | Anime catalog entries and metadata, including airing order and season links |
 | [Streaming Catalogs](https://7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/manifest.json) | `pw.ers.netflix-catalog` | Movie/show catalog entries and source signals |
 
-These adapters are still in the recommendation branch. There is no merged add-on feature or final device capture to advertise yet. The draft reads manifests and catalog metadata. It does not execute add-on streams or subtitles, install arbitrary plug-ins, sync accounts, provide a VPN, or replace a streaming app's player.
+These two adapters are included in the Android Vibe TV 1 feedback build on main. Artwork and shelf scrolling have been checked on the TCL; exact-title routing and broader acceptance remain pending. [Feedback build and measurements](recommendations/QUICK_PERFORMANCE_FIXES.md). The implementation reads manifests and catalog metadata. It does not execute add-on streams or subtitles, install arbitrary plug-ins, sync accounts, provide a VPN, or replace a streaming app's player.
 
 The feeds are public and need no signup. TMDB enrichment and optional title links have their own key requirements, which must be stated for the final build. A country label in a source feed does not prove that a title is available in that country; some Streaming Catalogs feeds use fixed provider countries. Routing and regional availability need separate checks.
 

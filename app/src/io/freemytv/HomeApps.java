@@ -67,6 +67,7 @@ final class HomeApps {
         int kind;
         String key, label, pkg, inputId, number;
         boolean resume;     // retain the provider's current task instead of resetting its launch activity
+        String resumeQuery; // explicit search fallback when a saved YouTube title has no public video ID
         String uri;         // opens this address in the app instead of the app's home (a title's page)
         Intent intent;      // DEVICE: the TV maker's own screen it opens
         String symbol;      // icon for the shortcuts and special cards
@@ -562,11 +563,15 @@ final class HomeApps {
                 intent = launchIntent(a.getPackageManager(), it.pkg);
                 plain = intent;
                 if (plain != null) {
-                    if (it.resume) plain.setFlags(plain.getFlags() & ~Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    if (it.resume) plain.setFlags((plain.getFlags() & ~Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                            | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                     else plain.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                 }
-                if (intent != null && it.uri != null) {
+                if (it.uri != null && !it.uri.trim().isEmpty()) {
                     intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(it.uri)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(it.pkg);
+                } else if (it.resumeQuery != null && !it.resumeQuery.isEmpty()) {
+                    intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.youtube.com/results?search_query="
+                            + android.net.Uri.encode(it.resumeQuery))).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(it.pkg);
                 }
                 break;
             case LIVE_TV:

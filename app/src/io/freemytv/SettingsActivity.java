@@ -1820,6 +1820,7 @@ public class SettingsActivity extends Activity {
         }
 
         private String sectionName(String key) {
+            int recommendation=RecommendationPlan.index(key);if(recommendation>=0)return RecommendationPlan.name(recommendation);
             switch (key) {
                 case "actions": return Ui.tr("Top Buttons");
                 case "weather": return Ui.tr("Weather widget");

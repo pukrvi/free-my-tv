@@ -12,13 +12,13 @@ TCL Android 12 capture from `3e382d0`. [Build details and provider limits](docum
 
 ## Recommendations from your apps
 
-![Earlier TCL capture of the current TMDB For You and Anime shelves](documentation/screenshots/recommendations-baseline.png)
+![For Me and Anime Airing on the latest tested TCL build](documentation/screenshots/recommendations-current.png)
 
-*Detail from an earlier TCL capture of the existing TMDB shelves. The new Stremio/Kitsu engine is still in development.*
+*Fresh TCL Android 12 capture, 27 October 2026, runtime `4f14037`: For Me, Anime Airing and New Movies. [Capture details](documentation/SCREENSHOTS.md#latest-recommendation-feedback-build).*
 
-The current For You, Anime, Movies and TV Shows shelves use TMDB picks filtered to installed services. They need your TMDB key. Hold OK on a title to hide it.
+The Android Vibe TV 1 feedback build combines TMDB, Anime Kitsu and Streaming Catalogs across twelve shelves. Public add-on catalogs need no signup; TMDB enrichment needs your own key. Hold OK on a title to hide it.
 
-A larger recommendation engine using Stremio catalogs is in development. Its new shelves and app routing will be documented after the implementation merges and passes device tests. [Recommendation guide and release status](documentation/FEATURE_STORIES.md#recommendations).
+Artwork and scrolling were checked on the TCL. Native-app/Stremio exact-title routing and broader device coverage still need feedback. This is a testing checkpoint, with no demonstrated performance improvement. [Build, measurements and limits](documentation/recommendations/QUICK_PERFORMANCE_FIXES.md).
 
 ## Continue Watching on Home
 
@@ -38,7 +38,7 @@ A separate controlled test measured warm Home returns at 80 versus 63 ms, about 
 
 ## Stremio catalog add-ons
 
-Two catalog integrations are being developed: Anime Kitsu and Streaming Catalogs. They supply discovery metadata; they are not a general plug-in installer or a video-stream resolver.
+The Android feedback build includes two catalog integrations: Anime Kitsu and Streaming Catalogs. They supply discovery metadata; they are not a general plug-in installer or a video-stream resolver.
 
 Contributors can build and test another catalog adapter in code. Support for an arbitrary add-on has to be verified; it is not promised by these two integrations. [Add-on scope and contribution requirements](documentation/ADDONS.md).
 

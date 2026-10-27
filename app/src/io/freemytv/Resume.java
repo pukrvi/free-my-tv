@@ -42,15 +42,20 @@ final class Resume {
 
     /** One thing to pick up: an app, its title, where it stopped (ms), and when it was last seen. */
     static final class Entry {
-        final String pkg, app, title, sub, mediaId;
+        final String pkg, app, title, sub, mediaId, launchUri;
         final long pos, dur, at;
 
         Entry(String pkg, String app, String title, String sub, String mediaId, long pos, long dur, long at) {
+            this(pkg, app, title, sub, mediaId, "", pos, dur, at);
+        }
+
+        Entry(String pkg, String app, String title, String sub, String mediaId, String launchUri, long pos, long dur, long at) {
             this.pkg = pkg;
             this.app = app;
             this.title = title;
             this.sub = sub == null ? "" : sub;
-            this.mediaId = mediaId == null ? "" : mediaId;
+            this.mediaId = cleanMediaId(pkg, mediaId);
+            this.launchUri = safeUri(pkg, launchUri);
             this.pos = pos;
             this.dur = dur;
             this.at = at;
@@ -62,12 +67,123 @@ final class Resume {
     private static final int MAX = 12;   // the row scrolls, but twelve is already a library
     private static final Pattern YT_ID = Pattern.compile("[\\w-]{11}");
 
-    /** Where the app opens straight on this title, when we know how: YouTube's vnd.youtube:<video id>. */
+    /** A public content destination, with the stored position rather than an old URL's timestamp. */
     static String uri(Entry e) {
-        if (e.pkg.startsWith("com.google.android.youtube") && YT_ID.matcher(e.mediaId).matches()) {
-            return "vnd.youtube:" + e.mediaId;
+        String address = e.launchUri.isEmpty() ? safeUri(e.pkg, e.mediaId) : e.launchUri;
+        if (youtube(e.pkg) && !address.isEmpty()) return address + "&t=" + point(e) / 1000;
+        return address;
+    }
+
+    static long point(Entry e) {
+        return Math.max(0, e.dur > 0 ? Math.min(e.pos, e.dur) : e.pos);
+    }
+
+    private static boolean youtube(String pkg) {
+        return pkg.equals("com.google.android.youtube.tv") || pkg.equals("com.google.android.youtube")
+                || pkg.equals("com.amazon.firetv.youtube");
+    }
+
+    /** Accept only provider-owned title addresses; never retain a signed stream URL, credentials or arbitrary intent. */
+    static String safeUri(String pkg, String candidate) {
+        if (candidate == null || candidate.isEmpty() || candidate.length() > 2048) return "";
+        String text = candidate.trim();
+        try {
+            if (youtube(pkg) && YT_ID.matcher(text).matches()) return "https://www.youtube.com/watch?v=" + text;
+            if (pkg.equals("com.netflix.ninja") && text.matches("[0-9]{3,12}")) return "https://www.netflix.com/watch/" + text + "?source=30";
+            if ((pkg.equals("com.stremio.one") || pkg.equals("com.stremio")) && text.matches("tt[0-9]+:[0-9]+:[0-9]+")) {
+                String id = text.split(":")[0];
+                return "stremio:///detail/series/" + id + "/" + text + "?autoPlay=true";
+            }
+            Uri u = Uri.parse(text);
+            String scheme = u.getScheme(), host = u.getHost();
+            if (u.getUserInfo() != null || u.getPort() != -1 || scheme == null) return "";
+            String path = u.getPath() == null ? "" : u.getPath();
+            if (youtube(pkg)) {
+                String id = "";
+                if ("vnd.youtube".equals(scheme)) id = u.getSchemeSpecificPart().split("[?&]")[0];
+                else if (("https".equals(scheme) || "http".equals(scheme)) && host != null) {
+                    if (host.equals("youtu.be") && path.matches("/[A-Za-z0-9_-]{11}")) id = path.substring(1);
+                    else if (host.equals("www.youtube.com") || host.equals("youtube.com") || host.equals("m.youtube.com")) {
+                        if (path.equals("/watch")) id = u.getQueryParameter("v");
+                        else if (path.matches("/(shorts|live|embed)/[A-Za-z0-9_-]{11}")) id = path.substring(path.lastIndexOf('/') + 1);
+                    }
+                }
+                return id != null && YT_ID.matcher(id).matches() ? "https://www.youtube.com/watch?v=" + id : "";
+            }
+            if (pkg.equals("com.stremio.one") || pkg.equals("com.stremio")) {
+                if (!"stremio".equals(scheme) || host != null && !host.isEmpty()) return "";
+                if (!path.matches("/detail/[A-Za-z0-9_-]{1,32}/[A-Za-z0-9:_-]{1,200}(?:/[A-Za-z0-9:_-]{1,200})?")) return "";
+                return "stremio://" + path + "?autoPlay=true";
+            }
+            if (!"https".equals(scheme) || host == null) return "";
+            if (pkg.equals("com.netflix.ninja") && (host.equals("www.netflix.com") || host.equals("netflix.com"))
+                    && path.matches("/(watch|title)/[0-9]{3,12}")) return "https://www.netflix.com" + path + "?source=30";
+            if ((pkg.equals("com.amazon.amazonvideo.livingroom") || pkg.equals("com.amazon.firebat") || pkg.equals("com.amazon.avod"))
+                    && (host.equals("www.primevideo.com") || host.equals("primevideo.com") || host.equals("www.amazon.com")
+                    || host.equals("amazon.com") || host.equals("www.amazon.in") || host.equals("amazon.in"))
+                    && path.matches("/(?:detail|dp|gp/video/detail)/[A-Za-z0-9]{10,64}/?")) {
+                String[] parts = path.split("/");
+                return "https://www.primevideo.com/detail/" + parts[parts.length - 1];
+            }
+            if ((pkg.equals("in.startv.hotstar") || pkg.equals("com.hotstar"))
+                    && (host.equals("www.hotstar.com") || host.equals("hotstar.com") || host.equals("www.jiohotstar.com") || host.equals("jiohotstar.com"))
+                    && path.matches("/(?:in/)?(?:movies|shows|sports)/[A-Za-z0-9/_-]+/[0-9]{8,20}/?")) return "https://" + host + path;
+        } catch (RuntimeException ignored) { }
+        return "";
+    }
+
+    private static String cleanMediaId(String pkg, String candidate) {
+        if (candidate == null) return "";
+        String id = candidate.trim();
+        if (id.length() > 2048 || id.matches(".*[\\p{Cntrl}].*")) return "";
+        if (id.contains("://") || id.startsWith("vnd.") || id.contains("?") || id.contains("#")) {
+            String canonical = safeUri(pkg, id);
+            if (canonical.isEmpty()) return "";
+            return youtube(pkg) ? Uri.parse(canonical).getQueryParameter("v") : canonical;
         }
-        return "";   // Netflix, Prime Video, Stremio: open the app; their schemes change and lie
+        return id.length() <= 200 ? id : "";
+    }
+
+    private static String metadataUri(String pkg, MediaMetadata m) {
+        if (m == null) return "";
+        MediaDescription d = m.getDescription();
+        String address = safeUri(pkg, m.getString(MediaMetadata.METADATA_KEY_MEDIA_URI));
+        if (address.isEmpty() && d.getMediaUri() != null) address = safeUri(pkg, d.getMediaUri().toString());
+        if (address.isEmpty()) address = safeUri(pkg, cleanMediaId(pkg, d.getMediaId()));
+        if (address.isEmpty()) address = ResumeLookup.fromMetadata(pkg, m, trim(d.getTitle()));
+        return address;
+    }
+
+    /** Identity must still match at execution time, including canonical IDs when both sides expose them. */
+    static boolean matches(Entry entry, MediaMetadata m) {
+        if (entry.title.isEmpty() || m == null) return false;
+        MediaDescription d = m.getDescription();
+        if (!entry.title.equals(trim(d.getTitle()))) return false;
+        String sub = trim(d.getSubtitle());
+        if (!entry.sub.isEmpty() && !sub.isEmpty() && !entry.sub.equals(sub)) return false;
+        String target = entry.launchUri.isEmpty() ? safeUri(entry.pkg, entry.mediaId) : entry.launchUri;
+        String actual = metadataUri(entry.pkg, m);
+        if (!target.isEmpty() && !actual.isEmpty() && !target.equals(actual)) return false;
+        long duration = m.getLong(MediaMetadata.METADATA_KEY_DURATION);
+        // A player may keep the episode title during an ad. Do not seek the ad or another cut of the video.
+        return entry.dur <= 0 || duration <= 0 || Math.abs(entry.dur - duration) <= Math.max(5000, entry.dur / 50);
+    }
+
+    /** Store a separately resolved public title link without resurrecting, reordering or aging a card. */
+    static synchronized Entry withUri(Context c, Entry entry, String candidate) {
+        String address = safeUri(entry.pkg, candidate);
+        if (address.isEmpty()) return entry;
+        List<Entry> list = load(c);
+        for (int i = 0; i < list.size(); i++) {
+            Entry stored = list.get(i);
+            if (!key(stored).equals(key(entry))) continue;
+            Entry linked = new Entry(stored.pkg, stored.app, stored.title, stored.sub, stored.mediaId, address,
+                    stored.pos, stored.dur, stored.at);
+            list.set(i, linked);
+            save(c, list);
+            return linked;
+        }
+        return entry;
     }
 
     /** "45 min left" or "2 h left": how far the title has to go, from where it stopped. "" when the app says no length. */
@@ -113,7 +229,8 @@ final class Resume {
             }
         }
         String sub = appOnly ? "" : trim(d == null ? null : d.getSubtitle());
-        String id = trim(d == null ? null : d.getMediaId());
+        String id = cleanMediaId(pkg, d == null ? null : d.getMediaId());
+        String address = metadataUri(pkg, m);
         Entry identity = new Entry(pkg, "", title, sub, id, pos, dur, 0);
         long hiddenUntil = sp(c).getLong("hidden:" + key(identity), 0);
         if (hiddenUntil > System.currentTimeMillis() || hiddenUntil > 0 && s.getState() != PlaybackState.STATE_PLAYING) return false;
@@ -142,6 +259,7 @@ final class Resume {
         if (old != null) {
             if (sub.isEmpty()) sub = old.sub;
             if (id.isEmpty()) id = old.mediaId;
+            if (address.isEmpty()) address = old.launchUri;
             if (dur <= 0) dur = old.dur;
             if (!positionKnown) pos = old.pos;
         }
@@ -156,13 +274,15 @@ final class Resume {
             save(c, list);
             return true;
         }
-        // The title is close to its last stored point: a paused session must not refresh its age or reorder it.
-        if (old != null && old.app.equals(app) && old.mediaId.equals(id) && old.dur == dur
-                && Math.abs(old.pos - pos) < 30_000) {
+        // Coalesce playing updates, but always keep a supplied final pause point, even less than 30 seconds later.
+        // Repeated paused callbacks and omitted fields still preserve the card's age/order.
+        long minimumChange = s.getState() == PlaybackState.STATE_PAUSED && positionKnown ? 1 : 30_000;
+        if (old != null && old.app.equals(app) && old.mediaId.equals(id) && old.launchUri.equals(address) && old.dur == dur
+                && Math.abs(old.pos - pos) < minimumChange) {
             return false;
         }
         if (oldIndex >= 0) list.remove(oldIndex);
-        list.add(0, new Entry(pkg, app, title, sub, id, pos, dur, System.currentTimeMillis()));
+        list.add(0, new Entry(pkg, app, title, sub, id, address, pos, dur, System.currentTimeMillis()));
         while (list.size() > MAX) list.remove(list.size() - 1);
         if (s.getState() == PlaybackState.STATE_PLAYING) {
             sp(c).edit().remove("expired:" + key(identity)).remove("hidden:" + key(identity)).apply();
@@ -337,7 +457,7 @@ final class Resume {
                 JSONObject o = a.optJSONObject(i);
                 if (o == null) continue;
                 out.add(new Entry(o.optString("pkg"), o.optString("app"), o.optString("title"), o.optString("sub"),
-                        o.optString("id"), o.optLong("pos"), o.optLong("dur"), o.optLong("at")));
+                        o.optString("id"), o.optString("uri"), o.optLong("pos"), o.optLong("dur"), o.optLong("at")));
             }
         } catch (Exception e) {
             AppLog.w("resume: " + e.getMessage());
@@ -353,6 +473,7 @@ final class Resume {
                 o.put("pkg", e.pkg).put("app", e.app).put("title", e.title).put("pos", e.pos).put("at", e.at);
                 if (!e.sub.isEmpty()) o.put("sub", e.sub);
                 if (!e.mediaId.isEmpty()) o.put("id", e.mediaId);
+                if (!e.launchUri.isEmpty()) o.put("uri", e.launchUri);
                 if (e.dur > 0) o.put("dur", e.dur);
                 a.put(o);
             }

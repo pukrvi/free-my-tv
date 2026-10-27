@@ -1,5 +1,7 @@
 # Continue Watching: TCL status, 27 October 2026
 
+**Latest hotfix status:** [saved-card resume investigation](#saved-card-resume-hotfix) supersedes the historical reopening claims below. Capture/artwork/progress alone do not prove exact-content resume. Tracking: [#22](https://github.com/pukrvi/vibe-tv/issues/22); [cross-chat issue history](documentation/ISSUES.md).
+
 This records the installed `continue-watching` branch on the owner’s TCL Android 12 TV. It is the feature-status reference
 for README/documentation updates and for the parallel Settings/home-theme work. Preserve these tested behaviors when
 integrating a new home theme. `stable` remains at `b920f4a`; playback `9d4473b` and final Settings `e740614` are now integrated into main. Historical captures below predate the final themes; the current gallery is [documentation/SCREENSHOTS.md](documentation/SCREENSHOTS.md).
@@ -79,3 +81,37 @@ and an older logo-only YouTube entry were dismissed, leaving YouTube and Stremio
 those entries stayed removed. The normal dock apps remain present. This pass did not repeat provider playback or the
 19 data-regression cases, since session handling and storage did not change. Current images and provenance are in
 [documentation/SCREENSHOTS.md](documentation/SCREENSHOTS.md).
+
+## Saved-card resume hotfix
+
+Branch `codex/continue-watching-resume` starts from main `f4a1492`, retaining the optimization and wiki/documentation work. Tested on TCL Smart TV Pro, Android 12, with **YouTube TV 7.27.302** and **Stremio 1.8.1** on 27 October 2026.
+
+### Changes
+
+- Persist validated provider title links from media metadata, preserving them when paused metadata omits fields. YouTube links use the saved timestamp; credential-bearing, foreign-host and signed stream URLs are rejected. Netflix/Prime/JioHotstar use genuine supported public title links when supplied and otherwise retain app-level fallback. No new live title-link success is claimed for those three services.
+- Recover Stremio episode identity from its own public Metahub artwork ID and explicit `SxxExx` title. Older cards can make one bounded background query to Stremio’s exported TV search provider. Only a unique exact title/type match is accepted; ambiguous titles are refused. This may use Stremio’s normal catalog network requests. Its documented `autoPlay=true` detail link attempts the previously used stream; unavailable streams/profile gates remain provider behavior.
+- Wait for a fresh matching session, then seek using its current actions. Check title, available channel/subtitle, canonical identity and duration before controls; never seek an opaque app-only card. Another selection or returning Home cancels the request. Final known pause positions are saved even below the normal 30-second playing-update threshold.
+- An empty address now uses the app launch fallback rather than a blank `ACTION_VIEW`. For YouTube cards without a usable ID, open the saved title’s search results. The user chooses the matching result; a bounded matching-playback watcher can then apply its saved point. Results are not silently selected.
+
+### Device evidence and limits
+
+| Check | Result |
+|---|---|
+| Older Stremio card after another episode | Played S01E02, returned Home, then selected the older S01E01 card. Saved point **478,752 ms**; reopened S01E01 reported **482,002 ms**, then **492,236 ms**, PLAYING. This demonstrates the correct older episode and continuing progress near the saved point. |
+| Known YouTube video URL with timestamp | Explicit public Blender URL at 120 seconds reported PLAYING at **123,732 ms**. URL target/time support is verified; this does not establish that the app publishes that ID during ordinary playback. |
+| Existing YouTube card without ID | Opened Big Buck Bunny search results and selected the visibly matching Blender result with one extra OK. Saved point **193,654 ms**; a YouTube session reported **198,313 ms** shortly afterward. This sample does not independently prove content identity or that Vibe, rather than YouTube’s own history, applied the point. Search destination is verified; one-press exact-video reopening and automatic seek for missing-ID cards remain unresolved. |
+| YouTube session identity | Live session supplied title/artist/duration/bitmap, but no MEDIA_ID, MEDIA_URI, artwork URI, session activity or session extras. Watch Next/preview providers were empty. Reliable automatic video identity remains unresolved in **#22**. |
+| Netflix / Prime / JioHotstar | Prior app-level fallback and metadata limits remain. New public-link parsing is covered in source; no fresh end-to-end title/position claim is made. See **#9 / #10**. |
+
+The source follows [Stremio’s documented detail/autoplay links](https://stremio.github.io/stremio-addon-sdk/deep-links.html). Stream availability can delay or prevent playback; a usable title link is distinct from a working stream.
+
+### Verification
+
+The independent baseline reproduced **10 failures in 37 assertions** while all 19 original checks passed. The final isolated suite passes **86 assertions**, covering link persistence, position clamps, ambiguous/unsafe lookup refusal, actual MediaSession stale callbacks, action changes, seek-to-zero, cancellation, removal and exact final pauses. A repeated-run fixture issue was fixed by clearing temporary preferences before the test and cleaning them before instrumentation finishes; user history is untouched.
+
+Full `tools/check.sh` passed with JDK 17 / Android platform 34 / build-tools 34.0.0: Android build, 31 existing host checks, 271 translation keys, generic LG/Samsung packaging and legacy web checks. The 10 existing performance-asset tests also passed. No remote CI pass is claimed while **#23** remains open.
+
+Installed APK SHA-256: `41097454ae1a897f5d6e0dc15539a9781da65cc2eb77e96350cbc7d57b22e0c6`.
+Screenshots were captured at 1920×1080 and inspected locally under `/tmp/free-my-tv-tv-check/resume-hotfix/`; search/video captures are not added to the public gallery because they can contain account UI and personal viewing history. The existing curated public gallery is preserved.
+
+For a controlled exact-position report, optional inspector usage is `tools/run-history-checks.sh DEVICE true 'Exact public test title'`. It reports only that requested saved sample’s point/duration/link presence plus the existing sanitized live metadata; it never prints a full playback URI. Inspector instrumentation restarts the home process, so sample the stored point **before** the launch and wait until resume polling completes before inspecting again. Screenshot/launch checks alone are insufficient.

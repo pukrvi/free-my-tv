@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "region": "IN",
+  "providerPriority": ["netflix", "prime", "hotstar"],
+  "fallback": "stremio",
+  "taste": {"genres": ["Science Fiction", "Fantasy"], "seedMovies": [{"title": "Dune", "year": 2021}, {"title": "Dune: Part Two", "year": 2024}], "mode": "explicit preferences; no inferred viewing history"},
+  "newReleaseDays": 90,
+  "recentReleaseDays": 365,
+  "minimumIdleSeconds": 60,
+  "rows": [
+    {"id":"for-me","title":"For Me","limit":10,"sources":"all","dataHours":6,"visitReplace":4,"idleMinutes":10,"idleReplace":2},
+    {"id":"anime-airing","title":"Anime Airing","limit":20,"sources":"kitsu-airing only","dataHours":12,"visitReplace":0,"idleMinutes":0,"idleReplace":0,"stableSourceOrder":true},
+    {"id":"new-movies","title":"New Movies","limit":10,"sources":"all eligible movies","dataHours":6,"visitReplace":4,"idleMinutes":10,"idleReplace":2},
+    {"id":"new-shows","title":"New Shows","limit":10,"sources":"all eligible shows / anime","dataHours":6,"visitReplace":4,"idleMinutes":10,"idleReplace":2},
+    {"id":"trending","title":"Trending","limit":10,"sources":"TMDB trending movies + TV only","dataHours":1,"visitReplace":3,"idleMinutes":15,"idleReplace":2},
+    {"id":"indian","title":"Indian","limit":10,"sources":"all; India origin","dataHours":24,"visitReplace":3,"idleMinutes":30,"idleReplace":2},
+    {"id":"sci-fi","title":"Sci-Fi","limit":10,"sources":"all; explicit science-fiction evidence","dataHours":24,"visitReplace":3,"idleMinutes":30,"idleReplace":2},
+    {"id":"korean","title":"Korean","limit":10,"sources":"all; South Korean origin","dataHours":24,"visitReplace":3,"idleMinutes":30,"idleReplace":2},
+    {"id":"japanese","title":"Japanese","limit":10,"sources":"all; Japanese origin","dataHours":24,"visitReplace":3,"idleMinutes":30,"idleReplace":2},
+    {"id":"oscars","title":"Oscar Winners","limit":10,"sources":"Academy-verified films matched to catalog IDs","dataHours":168,"visitReplace":2,"idleMinutes":60,"idleReplace":1},
+    {"id":"must-watch-movies","title":"Must-Watch Movies","limit":10,"sources":"all; quality-qualified films, region + decade rotation","dataHours":168,"visitReplace":3,"idleMinutes":60,"idleReplace":1},
+    {"id":"must-watch-tv","title":"Must-Watch TV","limit":10,"sources":"all; quality-qualified shows, region + decade rotation","dataHours":168,"visitReplace":3,"idleMinutes":60,"idleReplace":1}
+  ]
+}

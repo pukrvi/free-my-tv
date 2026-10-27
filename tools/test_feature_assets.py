@@ -290,7 +290,7 @@ class WikiSingleSourceTests(unittest.TestCase):
     def test_readme_recommendations_and_continue_sections_have_inline_images(self):
         readme = (ROOT / "README.md").read_text()
         sections = {
-            "Recommendations from your apps": "documentation/screenshots/recommendations-baseline.png",
+            "Recommendations from your apps": "documentation/screenshots/recommendations-current.png",
             "Continue Watching on Home": "documentation/feature-assets/continue-watching.png",
         }
         for heading, expected_image in sections.items():

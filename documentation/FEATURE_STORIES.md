@@ -6,13 +6,13 @@ Recommendations and Continue Watching are the headline product stories. Performa
 
 ## Recommendations
 
-![Current TMDB shelves, detail from an earlier TCL capture](screenshots/recommendations-baseline.png)
+![For Me and Anime Airing on the latest TCL feedback build](screenshots/recommendations-current.png)
 
-This image shows the existing TMDB implementation. Its [capture record](SCREENSHOTS.md#current-recommendation-shelves-earlier-capture) identifies the crop and unknown source build. It is separate from the new engine image, which remains gated below.
+This is a fresh actual-TV capture from runtime `4f14037`, taken on 27 October 2026. [Capture provenance](SCREENSHOTS.md#latest-recommendation-feedback-build).
 
-The landed baseline offers For You, Anime, Movies and TV Shows, with TMDB picks filtered to installed services and a long-OK hide action. It requires the configured TMDB key. This is the current product, not a promise that every service's private recommendation API or account history is available.
+The Android Vibe TV 1 feedback build has twelve shelves combining TMDB, Anime Kitsu and Streaming Catalogs, independent refresh policies and protected visible artwork. Public add-on catalogs need no signup; TMDB enrichment needs the configured key. Hold OK to hide a title. Catalog recommendations do not imply access to private service watch history.
 
-The separate Stremio/Kitsu engine is in active development. Its source feeds, deduplication/season identity, category planner, availability checks, routing priorities and refresh rules are still being implemented and tested. A prototype/planner result alone does not establish a landed on-TV feature.
+Artwork and scrolling have been checked on the TCL. Native/Stremio exact-title opening, regional availability and broader-device acceptance remain pending; the short measurements do not demonstrate a performance improvement. [Measurements and limits](recommendations/QUICK_PERFORMANCE_FIXES.md).
 
 The recommendation hero image is intentionally held until the implementing chat provides:
 

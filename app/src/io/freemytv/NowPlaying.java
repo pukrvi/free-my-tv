@@ -100,6 +100,91 @@ public class NowPlaying extends NotificationListenerService {
         }
     }
 
+    private static final Handler resumeHandler = new Handler(Looper.getMainLooper());
+    private static Runnable pendingResume;
+
+    static void cancelResume() {
+        if (pendingResume != null) resumeHandler.removeCallbacks(pendingResume);
+        pendingResume = null;
+    }
+
+    /** The provider can create a new session after Home pauses, so reacquire until its requested content is ready. */
+    static void requestResume(Context c, Resume.Entry entry) {
+        requestResume(c, entry, false);
+    }
+
+    static void requestResume(Context c, Resume.Entry entry, boolean searchFallback) {
+        cancelResume();
+        if (entry.title.isEmpty()) return;   // an app launch supplies no identity to seek safely
+        Context context = c.getApplicationContext();
+        long started = SystemClock.elapsedRealtime();
+        long deadline = started + (searchFallback ? 60_000 : 15_000);
+        pendingResume = new Runnable() {
+            private boolean playbackTransition;
+            private MediaController stable;
+            private long matchedAt;
+            @Override public void run() {
+                if (pendingResume != this || !Prefs.resumeOn() || SystemClock.elapsedRealtime() >= deadline) {
+                    if (pendingResume == this) pendingResume = null;
+                    return;
+                }
+                MediaController match = null;
+                boolean matchingPlayback = false;
+                try {
+                    for (MediaController mc : context.getSystemService(MediaSessionManager.class).getActiveSessions(component(context))) {
+                        if (!entry.pkg.equals(mc.getPackageName()) || !Resume.matches(entry, mc.getMetadata())) continue;
+                        PlaybackState state = mc.getPlaybackState();
+                        if (state == null || state.getState() != PlaybackState.STATE_PLAYING && state.getState() != PlaybackState.STATE_PAUSED) continue;
+                        if (state.getState() == PlaybackState.STATE_PLAYING) matchingPlayback = true;
+                        if (searchFallback && (state.getState() != PlaybackState.STATE_PLAYING
+                                || !playbackTransition || state.getLastPositionUpdateTime() < started)) {
+                            if (state.getState() != PlaybackState.STATE_PLAYING) playbackTransition = true;
+                            continue;
+                        }
+                        match = mc;
+                        break;
+                    }
+                    if (match == null) {
+                        if (searchFallback && !matchingPlayback) playbackTransition = true;
+                        stable = null;
+                        matchedAt = 0;
+                    } else if (stable == null || !stable.getSessionToken().equals(match.getSessionToken())) {
+                        stable = match;
+                        matchedAt = SystemClock.elapsedRealtime();
+                    } else if (SystemClock.elapsedRealtime() - matchedAt >= 500 && resumeController(entry, match)) {
+                        pendingResume = null;
+                        return;
+                    }
+                } catch (SecurityException ignored) {
+                    pendingResume = null;   // permission was revoked: never work around it
+                    return;
+                }
+                resumeHandler.postDelayed(this, 250);
+            }
+        };
+        // Let the launch arrive before interpreting the old session as the requested player.
+        resumeHandler.postDelayed(pendingResume, 750);
+    }
+
+    private static boolean resumeController(Resume.Entry entry, MediaController controller) {
+        try {
+            if (!entry.pkg.equals(controller.getPackageName()) || !Resume.matches(entry, controller.getMetadata())) return false;
+            PlaybackState state = controller.getPlaybackState();
+            if (state == null || state.getState() != PlaybackState.STATE_PLAYING && state.getState() != PlaybackState.STATE_PAUSED) return false;
+            long actions = state.getActions();
+            if (entry.pos > 0 && (actions & PlaybackState.ACTION_SEEK_TO) == 0) return false;
+            if (state.getState() == PlaybackState.STATE_PAUSED && (actions & PlaybackState.ACTION_PLAY) == 0) return false;
+            MediaController.TransportControls controls = controller.getTransportControls();
+            // Recheck at the last possible point: a callback can have been prepared for an older title.
+            if (!Resume.matches(entry, controller.getMetadata())) return false;
+            if ((actions & PlaybackState.ACTION_SEEK_TO) != 0) controls.seekTo(Resume.point(entry));
+            if (state.getState() == PlaybackState.STATE_PAUSED) controls.play();
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;   // destroyed provider session; a later poll can acquire its replacement
+        }
+    }
+
     private static boolean asked;
 
     /** A screen's watch: start() when it shows, stop() when it's hidden. text is null while nothing plays. */
@@ -154,28 +239,12 @@ public class NowPlaying extends NotificationListenerService {
             onActiveSessionsChanged(null);
         }
 
-        /** Prepare the matching live session for resume; HomeApps opens its UI before this callback runs. */
+        /** A prepared callback still checks live metadata/actions when invoked; the captured session may change. */
         Runnable prepareResume(Resume.Entry entry) {
             for (MediaController mc : controllers) {
-                if (!entry.pkg.equals(mc.getPackageName())) continue;
-                MediaMetadata m = mc.getMetadata();
-                MediaDescription d = m == null ? null : m.getDescription();
-                String title = d == null || d.getTitle() == null ? "" : d.getTitle().toString().trim();
-                String sub = d == null || d.getSubtitle() == null ? "" : d.getSubtitle().toString().trim();
-                String id = d == null || d.getMediaId() == null ? "" : d.getMediaId().toString().trim();
-                if (!entry.title.isEmpty() && (!entry.title.equals(title) || !entry.sub.equals(sub)
-                        || !entry.mediaId.isEmpty() && !id.isEmpty() && !entry.mediaId.equals(id))) continue;
-                PlaybackState s = mc.getPlaybackState();
-                long actions = s == null ? 0 : s.getActions();
-                MediaController.TransportControls controls = mc.getTransportControls();
-                return () -> {
-                    try {
-                        if (!entry.title.isEmpty() && entry.pos > 0 && (actions & PlaybackState.ACTION_SEEK_TO) != 0) controls.seekTo(entry.pos);
-                        controls.play();
-                    } catch (RuntimeException e) {
-                        AppLog.w("resume playback: " + e.getMessage());
-                    }
-                };
+                if (entry.pkg.equals(mc.getPackageName()) && Resume.matches(entry, mc.getMetadata())) {
+                    return () -> resumeController(entry, mc);
+                }
             }
             return null;
         }
