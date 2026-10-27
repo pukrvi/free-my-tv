@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Free My TV's settings (the app's icon, "All Apps", or the gear on the home screen), as a two-pane menu: on the
+ * Vibe TV's settings (the app's icon, "All Apps", or the gear on the home screen), as a two-pane menu: on the
  * left a rail of anchors, on the right one continuous settings document. Section headings and natural heights
  * let short groups reveal the following group. The rail jumps to headings; content arrows cross groups. OK moves
  * between the panes and opens what a row offers (a list, a switch); the arrows move the focus and step values; Back
@@ -153,7 +153,7 @@ public class SettingsActivity extends Activity {
         private static final long HOLD_MS = 500;
         private static final int AMBER = 0xFFFFC266, INK = 0xFF1C1C1E;
         /** RAIL_SYMBOLS[i] is the symbol of section i (Symbols assets). */
-        private static final String[] RAIL_SYMBOLS = {"home", "tune", "bedtime", "tune", "widgets", "apps", "toolbar", "schedule",
+        private static final String[] RAIL_SYMBOLS = {"palette", "view_agenda", "bedtime", "tune", "widgets", "apps", "toolbar", "schedule",
                 "settings_remote", "tv_settings", "info"};
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
         /** The list picker: what it was opened for (a key's index + 1, or one of the PICK_… constants below). */
@@ -264,7 +264,7 @@ public class SettingsActivity extends Activity {
             }
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             setFocusable(true);
-            setContentDescription("Free My TV");
+            setContentDescription("Vibe TV");
             // Stable section/row IDs survive movement through the continuous document.
             spoken = new Spoken(this, new Spoken.Source() {
                 @Override public void items(List<Integer> out) {
@@ -383,7 +383,7 @@ public class SettingsActivity extends Activity {
 
         /** The sections, on the rail and as the panel's title. */
         private String[] sectionLabels() {
-            return new String[] {Ui.tr("Home Screen"), Ui.tr("Home sections"), Ui.tr("Screensaver"), Ui.tr("Home Settings"), Ui.tr("Widgets"),
+            return new String[] {Ui.tr("Themes"), Ui.tr("Home Layout"), Ui.tr("Screensaver"), Ui.tr("Preferences"), Ui.tr("Widgets"),
                     Ui.tr("Shelf"), Ui.tr("Top Buttons"), Ui.tr("Sleep Timer"), Ui.tr("Remote Buttons"),
                     Ui.tr("TV Settings"), Ui.tr("About this TV")};
         }
@@ -472,7 +472,7 @@ public class SettingsActivity extends Activity {
         }
 
         private String[] generalLabels() {
-            return new String[] {Ui.tr("Language"), Ui.tr("Temperature"), Ui.tr("Theme"), Ui.tr("Navigation sounds")};
+            return new String[] {Ui.tr("Language"), Ui.tr("Temperature"), Ui.tr("Appearance"), Ui.tr("Navigation sounds")};
         }
 
         private String[] generalValues() {
@@ -522,7 +522,7 @@ public class SettingsActivity extends Activity {
                     JSONObject original = metrics == null ? null : metrics.optJSONObject(HomeMode.ORIGINAL);
                     JSONObject free = metrics == null ? null : metrics.optJSONObject(HomeMode.FREE);
                     return Ui.tr("COMPARISON") + ". " + Ui.tr("Original") + ", " + metric(original, "homeMs")
-                            + ". Free My TV, " + metric(free, "homeMs");
+                            + ". Vibe TV, " + metric(free, "homeMs");
                 }
                 if (row == 3) return Ui.tr("RECOMMENDATIONS") + ". " + recs.optInt("count");
                 JSONArray notices = state.optJSONArray("notices");
@@ -714,8 +714,8 @@ public class SettingsActivity extends Activity {
         }
 
         private String versionValue() {
-            String v = versionName(getContext());   // "Free My TV 1.2.3"
-            return v.startsWith("Free My TV ") ? v.substring("Free My TV ".length()) : v;
+            String v = versionName(getContext());   // "Vibe TV 1.2.3"
+            return v.startsWith("Vibe TV ") ? v.substring("Vibe TV ".length()) : v;
         }
 
         private String tvValue() {
@@ -809,9 +809,9 @@ public class SettingsActivity extends Activity {
 
         private static String versionName(Context c) {
             try {
-                return "Free My TV " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+                return "Vibe TV " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
             } catch (android.content.pm.PackageManager.NameNotFoundException e) {
-                return "Free My TV";
+                return "Vibe TV";
             }
         }
 
@@ -1641,9 +1641,9 @@ public class SettingsActivity extends Activity {
 
             Symbols.draw(getContext(), c, "sparkles", 126 * k, 121 * k, 30 * k, 0xEBFFFFFF);
             title.setTextAlign(Paint.Align.LEFT);
-            c.drawText("Free My TV", 162 * k, 132 * k, title);
+            c.drawText("Vibe TV", 162 * k, 132 * k, title);
             version.setTextAlign(Paint.Align.LEFT);
-            c.drawText(Ui.tr("Home Settings"), 100 * k, 185 * k, version);
+            c.drawText(Ui.tr("Settings"), 100 * k, 185 * k, version);
             version.setTextAlign(Paint.Align.CENTER);
             String[] labels = sectionLabels();
             int visibleIndex = 0;
@@ -1852,7 +1852,7 @@ public class SettingsActivity extends Activity {
             c.drawText(Ui.tr("COMPARISON"), hx, y, header);
             cellValue.setColor(0x73FFFFFF);
             c.drawText(Ui.tr("Original"), colA, y, cellValue);
-            c.drawText("Free My TV", colB, y, cellValue);
+            c.drawText("Vibe TV", colB, y, cellValue);
             cellValue.setColor(0xD9FFFFFF);
             JSONObject metrics = state.optJSONObject("metrics");
             JSONObject a = metrics == null ? null : metrics.optJSONObject(HomeMode.ORIGINAL);

@@ -312,7 +312,7 @@ final class HomeApps {
         List<Item> items = new ArrayList<>();
         items.add(shortcut(ALL_APPS, "all", Ui.tr("All Apps"), "apps"));
         items.add(shortcut(SLEEP, "sleep", Ui.tr("Sleep Timer"), "bedtime"));
-        items.add(shortcut(SETTINGS, "settings", Ui.tr("Home Settings"), "settings"));
+        items.add(shortcut(SETTINGS, "settings", Ui.tr("Settings"), "settings"));
         items.add(shortcut(ANDROID_SETTINGS, "tv-settings", Ui.tr("TV Settings"), "tv_settings"));
         // HY300 projectors (Hotack, Allwinner H713): keystone and focus live in the maker's settings app, and the
         // stock home screen was the only way to its Miracast receiver. Each shows only where the TV has it.
@@ -539,7 +539,7 @@ final class HomeApps {
         synchronized (HomeApps.class) {
             TILES.keySet().removeIf(k -> k.contains(".") && !seen.contains(k));
         }
-        items.add(special(c, SETTINGS, "freemytv-settings", "Free My TV", "sparkles"));
+        items.add(special(c, SETTINGS, "freemytv-settings", "Vibe TV", "sparkles"));
         return items;
     }
 
