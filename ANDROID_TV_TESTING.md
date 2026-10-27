@@ -3,12 +3,12 @@
 Use this procedure to verify Android launcher changes on the user's TCL Android TV. A successful build is not device
 verification. The task must explicitly authorize installing or launching the app on the TV; otherwise ask first.
 
-Integrated main runtime matches final Settings `e740614` with playback `9d4473b`; the earlier `stable` tag is a historical baseline. Read [FEATURES.md](FEATURES.md) and [COMPATIBILITY.md](COMPATIBILITY.md) before making feature claims.
+The integrated baseline contains Settings `e740614` with playback `9d4473b`; Settings clarity polish `b88a229` adds Vibe TV branding and the Themes / Home Layout / Preferences labels. the earlier `stable` tag is a historical baseline. Read [FEATURES.md](FEATURES.md) and [COMPATIBILITY.md](COMPATIBILITY.md) before making feature claims.
 
 ## Target and privacy
 
 - TV: `192.168.1.9:5555`.
-- Settings branch: `settings-nav`; the separate home task uses `ui/yours` in its own worktree. Verify the active branch
+- Settings polish branch: `codex/settings-clarity`; the separate home task uses `ui/yours` in its own worktree. Verify the active branch
   and preserve its existing changes; do not build one task from the other task's checkout.
 - ADB: `/Users/vishmac/Library/Android/sdk/platform-tools/adb`.
 - TV-specific project configuration belongs in the repository. PII stays in the user's local-only environment file.
@@ -80,17 +80,17 @@ The recorded key sequence is a historical home check. For **Vibe TV 1**, use the
 
 Wait for any other thread to release the TV before installing or sending input. Preserve the latest combined home and Continue Watching source in the test build. A prior Settings-only APK must not replace newer playback fixes.
 
-Launch the Home activity with `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME`; inspect the resting screenshot before navigating. From the first dock app, UP then RIGHT twice and OK opens Home Settings. Do not assume remembered home focus after returning from another activity.
+Launch the Home activity with `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME`; inspect the resting screenshot before navigating. From the first dock app, UP then RIGHT twice and OK opens Settings. Do not assume remembered home focus after returning from another activity.
 
 Save fresh captures under `/tmp/free-my-tv-tv-check/continuous-settings/`:
 
-1. Capture startup with Home Screen selected in the left column. Its thumbnail choices are ordered **Vibe TV 1**, **Simba (Free-My-TV)**, **Lamplight**, then **Google TV**. Both columns use one surface separated by a vertical rule. Confirm the active check and focused tile are distinguishable.
+1. Confirm the header reads Vibe TV / Settings and that Themes, Home Layout, and Preferences have distinct palette, stacked-section and slider icons. Capture startup with Themes selected in the left column. Its thumbnail choices are ordered **Vibe TV 1**, **Simba (Free-My-TV)**, **Lamplight**, then **Google TV**. Both columns use one surface separated by a vertical rule. Confirm the active check and focused tile are distinguishable.
 2. RIGHT enters the first thumbnail. RIGHT/LEFT crosses columns; DOWN/UP crosses grid rows. Read the labels before OK so the navigation test does not accidentally choose Google TV and run factory recovery.
-3. When Vibe TV 1 is selected, **Home sections** appears immediately below Home Screen in the rail and continuous document. It is absent for Simba and Lamplight, with no empty gap or inaccessible hidden node. Use labels rather than fixed press counts to navigate afterward.
-4. Jump to Screensaver from the left. Capture Home Settings visible below, confirming short sections do not occupy an entire screen. RIGHT enters Preview. DOWN traverses My Photos and Watch from the screensaver, then crosses to Language in Home Settings; confirm the left selection follows it.
-5. LEFT returns to Home Settings in the navigation. DOWN to Widgets and capture the anchor. RIGHT starts on Weather; verify no hours-versus-days selector, Continue Watching is preserved, and coin controls appear only when Quotes is on.
+3. When Vibe TV 1 is selected, **Home Layout** appears immediately below Themes in the rail and continuous document. It is absent for Simba and Lamplight, with no empty gap or inaccessible hidden node. Use labels rather than fixed press counts to navigate afterward.
+4. Jump to Screensaver from the left. Capture Preferences visible below, confirming short sections do not occupy an entire screen. RIGHT enters Preview. DOWN traverses My Photos and Watch from the screensaver, then crosses to Language in Preferences; confirm the left selection follows it.
+5. LEFT returns to Preferences in the navigation. DOWN to Widgets and capture the anchor. RIGHT starts on Weather; verify no hours-versus-days selector, Continue Watching is preserved, and coin controls appear only when Quotes is on.
 6. Jump to Shelf, RIGHT, and navigate beyond the ninth item. Capture lower rows with focus visible. Hold OK on an existing item, move once, then Back to cancel; confirm saved order and focused-item visibility are restored.
-7. In Vibe TV 1's Home sections, record the current order/visibility. Reorder once, cancel and verify restoration. Toggle one section and restore it; verify the home honors the change and returns to the recorded composition. Inspect Reset layout confirmation and cancel unless a reset is explicitly part of the check. Do not alter Simba or Lamplight composition through this editor.
+7. In Vibe TV 1's Home Layout, record the current order/visibility. Reorder once, cancel and verify restoration. Toggle one section and restore it; verify the home honors the change and returns to the recorded composition. Inspect Reset layout confirmation and cancel unless a reset is explicitly part of the check. Do not alter Simba or Lamplight composition through this editor.
 8. Inspect Top Buttons and Sleep Timer anchors. Open the duration picker and cancel without changing its value. Back returns to navigation, and another Back exits. Jump to About and traverse the read-only comparison, recommendation status and notices; confirm a real document end.
 9. With theme switching authorized, select each custom design and return Home for a fresh full-resolution capture. Vibe TV 1 must preserve its existing row layout and playback baseline. Simba must match the original upstream `90908dc5bce178feb52e9868947cc039c64730fc` home (tabs, hero, dock and drawer), not a redesigned approximation. Lamplight must render through its independent adapter/renderer, with usable app/settings/input navigation. Return to the user's chosen theme afterward. Google TV remains last; verify its presence and recovery wiring without activating factory restoration unless that switch is part of the authorized test.
 10. Read the current HOME default; custom themes use `io.freemytv/.HomeActivity`. Do not call `set-home-activity` to implement a custom-theme switch. Leave the TV at home and release it to the next thread. Stop any temporary wake process.

@@ -38,6 +38,8 @@ before you do it, and let them do the taps on the TV.
 
 ## User's TCL Android TV
 
+Current Android Settings labels: **Themes** selects the home design, **Home Layout** edits Vibe TV 1 sections, and **Preferences** contains general values including **Appearance**. The in-app header is **Vibe TV / Settings** and the home shortcut is **Settings**. Android’s installed app label, package and APK names remain unchanged. Older upstream instructions below may use Home Screen / Home Settings.
+
 The current Android design target is the TCL Smart TV Pro running Android 12. Its launcher UI is remote-first and uses a
 1920 × 1080 reference layout. For the saved device address, one-build/one-install workflow, screenshot sequence, and
 privacy requirements, follow [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). Settings changes belong on `settings-nav`;

@@ -2,9 +2,9 @@
 
 [Back to the project](README.md) · [Hardware and app results](COMPATIBILITY.md)
 
-Vibe TV is this fork. Existing builds still display **Free My TV**, use package `io.freemytv`, and produce `FreeMyTV.apk`, `FreeMyTV-webos.ipk` and `FreeMyTV-tizen.wgt`. These names are intentional compatibility identifiers. A documentation rename does not rename the installed app. Build from this fork for its changes; upstream downloads and freemytv.io do not distribute this fork. No Vibe TV release is asserted by this guide.
+Vibe TV is this fork. The Settings screen displays **Vibe TV**. Android’s installed app label remains **Free My TV**; builds use package `io.freemytv`, and produce `FreeMyTV.apk`, `FreeMyTV-webos.ipk` and `FreeMyTV-tizen.wgt`. These names are intentional compatibility identifiers. A documentation rename does not rename the installed app. Build from this fork for its changes; upstream downloads and freemytv.io do not distribute this fork. No Vibe TV release is asserted by this guide.
 
-Before installing, understand the changes and keep **Home Screen → Google TV** (Original mode) available. An assistant must ask before device changes and let you perform the mode switch on the TV. Use a JDK 17 and Android SDK build-tools 34.0.0/platform android-34 for the CI baseline; the Mac JDK path below is an example, not a requirement.
+Before installing, understand the changes and keep **Settings → Themes → Google TV** (Original mode) available. An assistant must ask before device changes and let you perform the mode switch on the TV. Use a JDK 17 and Android SDK build-tools 34.0.0/platform android-34 for the CI baseline; the Mac JDK path below is an example, not a requirement.
 
 ## Android TV
 
@@ -42,7 +42,7 @@ keystore private; the file contains the TMDB key, and updates must use the same 
    > Install Free My TV (github.com/pukrvi/free-my-tv) on my TV at 192.168.1.50. I live in Lisbon.
 
    It downloads the code, installs the tools it needs, builds the app and puts it on your TV, and asks before anything important. Swap in your TV's IP and your city.
-3. **On the TV**, open *Free My TV* → *Home Screen* → *Vibe TV 1* (or Simba / Lamplight). That's when the TV asks *Allow USB debugging?* for Free My TV: tick *Always allow* and accept.
+3. **On the TV**, open *Free My TV* → *Themes* → *Vibe TV 1* (or Simba / Lamplight). That's when the TV asks *Allow USB debugging?* for Free My TV: tick *Always allow* and accept.
 
 ### Upstream APK (Free My TV, not a Vibe TV release)
 
@@ -86,7 +86,7 @@ If you built Free My TV yourself before, switch back to *Original* and uninstall
    ```bash
    adb shell "appops set io.freemytv AUTO_START allow || appops set io.freemytv APP_AUTO_START allow"
    ```
-5. **On the TV**, open *Free My TV* → *Home Screen* → *Vibe TV 1* (or Simba / Lamplight). The TV asks *Allow USB debugging?* once more, now for Free My TV itself: tick *Always allow* and accept. (Run `adb disconnect 192.168.1.50:5555` first: on Android 8 to 10 the TV can hand that answer to a computer that's still connected.)
+5. **On the TV**, open *Free My TV* → *Themes* → *Vibe TV 1* (or Simba / Lamplight). The TV asks *Allow USB debugging?* once more, now for Free My TV itself: tick *Always allow* and accept. (Run `adb disconnect 192.168.1.50:5555` first: on Android 8 to 10 the TV can hand that answer to a computer that's still connected.)
 
 ## LG TVs (webOS)
 
@@ -134,9 +134,9 @@ This build takes your city from the TV's time zone. For your exact city and the 
 
 ## Settings
 
-The Android settings screen is one continuous document. The left rail jumps to sections; Right or OK enters their controls. Up/Down can cross section boundaries, and Back returns to the rail. Home Screen offers Vibe TV 1, Simba (Free-My-TV), Lamplight, then Google TV. Only Vibe TV 1 shows **Home sections**: OK toggles visibility; hold OK to lift, arrows to move, OK to drop, Back to cancel. Reset layout requires confirmation.
+The Android settings screen is one continuous document. The left rail jumps to sections; Right or OK enters their controls. Up/Down can cross section boundaries, and Back returns to the rail. Themes offers Vibe TV 1, Simba (Free-My-TV), Lamplight, then Google TV. Only Vibe TV 1 shows **Home Layout**: OK toggles visibility; hold OK to lift, arrows to move, OK to drop, Back to cancel. Reset layout requires confirmation.
 
-The first values come from `config.properties`, created by the first build (Google TV, LG and Samsung use the same file). Most of them can also be changed on the TV, in *Free My TV* → *Home Settings*, and the TV's choice wins:
+The first values come from `config.properties`, created by the first build (Google TV, LG and Samsung use the same file). Most of them can also be changed on the TV, in *Settings* → *Preferences* or *Widgets*, and the TV's choice wins:
 
 | Key | What it does | Default |
 |---|---|---|
@@ -175,9 +175,9 @@ On Google TV and Android TV, with the TV connected over adb (see *Install*), sen
 python3 tools/photos.py <TV IP> beach.jpg hills.jpg Holidays/
 ```
 
-They land in the app's own folder on the TV (no permission needed); on Android 11, which keeps adb out of other apps' folders, they go through Free My TV itself. The next time the home screen, the screensaver or Free My TV's settings open, the app imports each one: turned upright, cropped to 16:9, resized for the TV and saved without its GPS and other tags; what was sent is then deleted. The screensaver shows them in the order you sent them, instead of the picks' photos; without a TMDB key, one of them is the home screen's background, a new one every hour. *Home Settings* → *My Photos*: the arrows turn them on or off, OK removes them. Up to 100; JPEG, PNG and WebP, and HEIC on Android 9 and newer.
+They land in the app's own folder on the TV (no permission needed); on Android 11, which keeps adb out of other apps' folders, they go through Free My TV itself. The next time the home screen, the screensaver or Free My TV's settings open, the app imports each one: turned upright, cropped to 16:9, resized for the TV and saved without its GPS and other tags; what was sent is then deleted. The screensaver shows them in the order you sent them, instead of the picks' photos; without a TMDB key, one of them is the home screen's background, a new one every hour. *Settings* → *Screensaver* → *My Photos*: the arrows turn them on or off, OK removes them. Up to 100; JPEG, PNG and WebP, and HEIC on Android 9 and newer.
 
 
 ## Restore the original home
 
-On the TV, open **Free My TV → Home Screen → Google TV** (Original mode) before uninstalling. Uninstalling while the replacement mode is active can leave disabled packages disabled. See the recovery instructions in [CLAUDE.md](CLAUDE.md#adapting-it-to-another-tv). Updates require the same signing key; back up your key privately.
+On the TV, open **Vibe TV Settings → Themes → Google TV** (Original mode) before uninstalling. Uninstalling while the replacement mode is active can leave disabled packages disabled. See the recovery instructions in [CLAUDE.md](CLAUDE.md#adapting-it-to-another-tv). Updates require the same signing key; back up your key privately.
