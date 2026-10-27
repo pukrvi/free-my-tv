@@ -14,18 +14,18 @@ The saved network address and local workstation paths are operational details, n
 
 ## Streaming app results
 
-These include the historical TCL baseline (`9d4473b` / `e740614`) and the explicitly identified 27 October saved-card hotfix results. The baseline passed 19 isolated checks; the hotfix passed 86. Theme/navigation checks are recorded in [Settings verification](https://github.com/pukrvi/vibe-tv/blob/main/design/SETTINGS_VERIFICATION.md); a passing launch or synthetic data test does not prove provider playback.
+These summarize the TCL playback tests for `9d4473b`, preserved in final Settings build `e740614` and integrated into main. All 19 isolated playback regression cases passed in the playback chat. Theme/navigation checks are recorded in [Settings verification](https://github.com/pukrvi/vibe-tv/blob/main/design/SETTINGS_VERIFICATION.md); a passing launch or synthetic data test does not prove provider playback.
 
 | App | Launch | Title / progress | Artwork | Reopen / resume | Current limitation |
 |---|---|---|---|---|---|
-| YouTube | Device checked | Title, duration and progress checked | Real video thumbnail captured in the integrated revision | Historical same-session check; latest hotfix verifies timestamp URLs and search-assisted reopen | YouTube TV 7.27.302 exposes no ID/URI in sampled sessions; missing-ID cards need one extra result selection. One-press exact resume remains #22 |
-| Stremio | Launch path checked | Episode and progress shown in the integrated capture | Artwork visible in the integrated capture | Older S01E01 card reopened after S01E02 near its saved point in hotfix device check | Stremio 1.8.1; public artwork IDs or unique provider title match identify episodes; autoplay depends on remembered/available stream |
+| YouTube | Device checked | Title, duration and progress checked | Real video thumbnail captured in the integrated revision | Same public video reopened at saved playback position in baseline test | Direct video opening requires a usable video ID; other sessions can fall back to app opening |
+| Stremio | Launch path checked | Episode and progress shown in the integrated capture | Artwork visible in the integrated capture | App reopen path implemented | Exact-title resume not established by an end-to-end public report |
 | JioHotstar | Device checked | Episode title and progress/duration observed during playback | Missing; app logo fallback | Reopen checked by playback chat | No artwork, series name or content ID in inspected live session; title-specific resume not proven |
 | Netflix | Launch path checked | Live session supplied no title or content ID; user reported capture and reopen failures | Branded app-art fallback checked in `3e382d0`; no verified title artwork | Integrated revision implements “Continue in Netflix” app-level fallback | Exact-title capture/resume remains unresolved; app opening checked; reliable playback restart unresolved |
 | Prime Video | Launch path checked | Tests exposed generic “PrimeVideo” metadata; user reported failure | No verified title artwork | Integrated revision implements app-level fallback | Exact-title capture/resume remains unverified; app opening checked; reliable playback restart unresolved |
 | TCL Channel and other dock apps | Visible on the test dock | Not tested | Not tested | Not tested | Presence is not evidence of playback integration |
 
-Earlier summaries did not capture app versions. The 27 October hotfix sampled YouTube TV **7.27.302** and Stremio **1.8.1**; [exact saved-point evidence and remaining limits](https://github.com/pukrvi/vibe-tv/blob/main/PLAYBACK_STATUS.md#saved-card-resume-hotfix). New reports must include versions to make comparisons meaningful. DRM may hide video screenshots; a black capture alone does not establish playback failure.
+Streaming app versions were not captured in the available test summaries. New reports must include versions to make comparisons meaningful. DRM may hide video screenshots; a black capture alone does not establish playback failure.
 
 ## Inherited platform coverage
 
