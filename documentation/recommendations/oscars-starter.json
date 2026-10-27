@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "verifiedOn": "2026-10-27",
+  "scope": "Editorial starter selection of verified Academy-winning films; not a complete Oscars catalog or production asset.",
+  "matchingPolicy": "Resolve exact title and original release year to a movie ID; verify ambiguity rather than assuming an ID.",
+  "films": [
+    {
+      "filmTitle": "The Godfather",
+      "releaseYear": 1972,
+      "ceremonyYear": 1973,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/1973"
+    },
+    {
+      "filmTitle": "The Matrix",
+      "releaseYear": 1999,
+      "ceremonyYear": 2000,
+      "wonCategory": "Visual Effects",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2000"
+    },
+    {
+      "filmTitle": "Crouching Tiger, Hidden Dragon",
+      "releaseYear": 2000,
+      "ceremonyYear": 2001,
+      "wonCategory": "Foreign Language Film",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2001"
+    },
+    {
+      "filmTitle": "Spirited Away",
+      "releaseYear": 2001,
+      "ceremonyYear": 2003,
+      "wonCategory": "Animated Feature Film",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2003",
+      "releaseYearSourceUrl": "https://www.ghibli.jp/works/chihiro/",
+      "note": "Original Japanese release was 2001; the Academy ceremony was 2003."
+    },
+    {
+      "filmTitle": "The Lord of the Rings: The Return of the King",
+      "releaseYear": 2003,
+      "ceremonyYear": 2004,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2004"
+    },
+    {
+      "filmTitle": "Slumdog Millionaire",
+      "releaseYear": 2008,
+      "ceremonyYear": 2009,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2009"
+    },
+    {
+      "filmTitle": "Parasite",
+      "releaseYear": 2019,
+      "ceremonyYear": 2020,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2020"
+    },
+    {
+      "filmTitle": "Dune",
+      "releaseYear": 2021,
+      "ceremonyYear": 2022,
+      "wonCategory": "Music (Original Score)",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2022"
+    },
+    {
+      "filmTitle": "Everything Everywhere All at Once",
+      "releaseYear": 2022,
+      "ceremonyYear": 2023,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2023"
+    },
+    {
+      "filmTitle": "Oppenheimer",
+      "releaseYear": 2023,
+      "ceremonyYear": 2024,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2024"
+    },
+    {
+      "filmTitle": "Dune: Part Two",
+      "releaseYear": 2024,
+      "ceremonyYear": 2025,
+      "wonCategory": "Sound",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2025"
+    },
+    {
+      "filmTitle": "Anora",
+      "releaseYear": 2024,
+      "ceremonyYear": 2025,
+      "wonCategory": "Best Picture",
+      "awardStatus": "winner",
+      "academySourceUrl": "https://www.oscars.org/oscars/ceremonies/2025"
+    }
+  ]
+}

@@ -88,8 +88,8 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     /** Blur radii of the shadow and shadowDeep paints (Shadows needs them to draw the same blur on older TVs). */
     private static final float SHADOW_BLUR = 26, DEEP_BLUR = 30;
     private static final int SKY = 0, STRIP = 1, PLATTER = 4, TILES = 5, DRAWER = 6, SHEET = 7, TOAST = 8,
-            ROW0 = 9, ROW1 = 10, ROW2 = 11, ROW3 = 12, RESUME = 13;
-    private static final int Z_SHELF = 2, Z_DRAWER = 3, Z_ROW0 = 20, Z_RESUME = 24;
+            ROW0 = 9, RESUME = 30;
+    private static final int Z_SHELF = 2, Z_DRAWER = 3, Z_ROW0 = 20, Z_RESUME = 40;
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
     // The dock layer begins at 430; its 20-unit inset puts the glass at 450..656 and the tiles at 490..616.
     private static final float L_DOCK_TOP = 430, L_PLATTER_TOP = 20, L_TILE_H = 126;
@@ -119,7 +119,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     });
     private final RectF a11yRect = new RectF();
     private final Layer sky, strip, platter, tiles, drawerLayer, sheetLayer, toastLayer;
-    private final Layer[] rowLayers = new Layer[4];
+    private final Layer[] rowLayers = new Layer[RecommendationPlan.COUNT];
     private int zone = Z_SHELF;
     private final List<String> sectionOrder;
     private final Map<String, Boolean> sectionEnabled = new HashMap<>();
@@ -137,19 +137,19 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     private boolean nightPair;          // the glass holds both photos (day and night), blended by `night`
     private Shader nightGradient;
 
-    private final List<Recs.Pick>[] rowItems = new List[] {new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()};
-    private final Spring[][] rowFocus = new Spring[4][];
-    private final RectF[][] rowRects = new RectF[4][];
+    private final List<Recs.Pick>[] rowItems = emptyRows();
+    private final Spring[][] rowFocus = new Spring[RecommendationPlan.COUNT][];
+    private final RectF[][] rowRects = new RectF[RecommendationPlan.COUNT][];
     private static final class RowText {
         String title, meta, titleDraw, metaDraw;
         float width = -1;
         int generation = -1;
     }
-    private final RowText[][] rowText = new RowText[4][];
-    private final float[] rowOffset = new float[4];
-    private final int[] rowCol = new int[4];
-    private final Paint[] rowScrimPaints = new Paint[4];
-    private final LinearGradient[] rowScrims = new LinearGradient[4];
+    private final RowText[][] rowText = new RowText[RecommendationPlan.COUNT][];
+    private final float[] rowOffset = new float[RecommendationPlan.COUNT];
+    private final int[] rowCol = new int[RecommendationPlan.COUNT];
+    private final Paint[] rowScrimPaints = new Paint[RecommendationPlan.COUNT];
+    private final LinearGradient[] rowScrims = new LinearGradient[RecommendationPlan.COUNT];
     private Paint rowLabel, rowTitle, rowMeta, lQuote;
     private Shader lightGradient;
 
@@ -241,7 +241,13 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     private boolean running, tilesDirty, drawerDirty, gridDirty, motionDirty = true;
     private boolean idle;
     private long lastNanos, resumedAt, lastStep, rowSnapshotAt;
-    private int rowCycle;
+    private long rowCycle;
+    private long lastRemoteInput, rankGeneration;
+    private boolean ranking;
+    private final long[] rowRotatedAt=new long[RecommendationPlan.COUNT];
+    private static List<Recs.Pick>[] emptyRows(){
+        @SuppressWarnings("unchecked") List<Recs.Pick>[] rows=new List[RecommendationPlan.COUNT];for(int i=0;i<rows.length;i++)rows[i]=new ArrayList<>();return rows;
+    }
     private static final long BURST_MS = 1500;
     private int w, h;
     private float k = 1;
@@ -305,16 +311,14 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
             // background at that translated position too.
             scene.setOffset(0, getTranslationY());
             shadows.dither = dark() > 0.5f;
+            if(kind>=ROW0&&kind<ROW0+RecommendationPlan.COUNT){drawRow(c,kind-ROW0);scene.setOffset(0,0);return;}
             switch (kind) {
                 case SKY: drawSky(c); break;
                 case STRIP: drawStrip(c); break;
                 case PLATTER: drawPlatter(c); break;
                 case TILES: drawTiles(c); break;
             case DRAWER: drawChips(c); break;
-                case ROW0: drawRow(c, 0); break;
-                case ROW1: drawRow(c, 1); break;
-                case ROW2: drawRow(c, 2); break;
-                case ROW3: drawRow(c, 3); break;
+
                 case RESUME: drawResumeRow(c); break;
                 case SHEET: drawSheetLayer(c); break;
                 default: drawToast(c); break;
@@ -378,11 +382,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         drawerLayer = new Layer(a, DRAWER);
         resumeLayer = new Layer(a, RESUME);
         resumeWatch = new NowPlaying.Watch(a, this::reloadResume, true);   // records while the home screen shows
-        // ROW0 reuses the retired hero layer's position in the old z-order.
-        rowLayers[0] = new Layer(a, ROW0);
-        rowLayers[1] = new Layer(a, ROW1);
-        rowLayers[2] = new Layer(a, ROW2);
-        rowLayers[3] = new Layer(a, ROW3);
+        for(int i=0;i<rowLayers.length;i++)rowLayers[i]=new Layer(a,ROW0+i);
         sheetLayer = new Layer(a, SHEET);
         toastLayer = new Layer(a, TOAST);
         // Hardware layers on the GPU: only the one that changed is redrawn; moving, fading and scaling stay cheap.
@@ -431,6 +431,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         // Some remotes (Xiaomi's) send one Home press as a burst of 5 to 8, and each one pauses and resumes the home
         // screen: those after the first change nothing, so the lists are read only once.
         boolean firstResume = resumedAt == 0;
+        lastRemoteInput=SystemClock.elapsedRealtime();
         boolean again = resumedAt != 0 && now - resumedAt < BURST_MS;
         resumedAt = now;
         lastNanos = 0;
@@ -470,6 +471,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         resumeLaunchGeneration++;   // a pending title lookup must not launch after Home has left the foreground
         if (!running) return;
         running = false;
+        rankGeneration++;ranking=false;
         cancelReorder(true);
         if (cardMenu != null) cardMenu.dismiss();
         handler.removeCallbacks(holdStart);
@@ -752,17 +754,22 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         positionSection(drawerLayer, "actions", CHIPS_TOP);
         for (int i = 0; i < rowLayers.length; i++) positionSection(rowLayers[i], rowSection(i), rowTopUnits(i));
         positionSection(resumeLayer, "continue", ROWS_TOP);
+        warmVisible();
     }
 
     private void positionSection(View layer, String key, float originalTop) {
         boolean shown = sectionShown(key);
-        layer.setVisibility(shown && layer.getAlpha() > 0.002f ? VISIBLE : INVISIBLE);
         float top = sectionTops.containsKey(key) ? sectionTops.get(key) : originalTop;
+        float screenTop=(top-pageScroll.value)*k;
+        boolean recommendation=layer instanceof Layer&&((Layer)layer).kind>=ROW0&&((Layer)layer).kind<ROW0+RecommendationPlan.COUNT;
+        boolean visible=shown&&layer.getAlpha()>.002f&&(!recommendation||screenTop<getHeight()+120*k&&screenTop+ROW_BAND_H*k>-120*k);
+        layer.setVisibility(visible?VISIBLE:INVISIBLE);
+        if(recommendation)layer.setLayerType(visible&&!Ui.LEGACY?LAYER_TYPE_HARDWARE:LAYER_TYPE_NONE,null);
         layer.setTranslationY((top - originalTop - pageScroll.value) * k);
     }
 
     private static String rowSection(int row) {
-        return row == 0 ? "for-you" : row == 1 ? "anime" : row == 2 ? "movies" : "tv-shows";
+        return RecommendationPlan.IDS[row];
     }
 
     private static String sectionForZone(int group) {
@@ -776,7 +783,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         if (key.equals("actions")) return Z_DRAWER;
         if (key.equals("apps")) return Z_SHELF;
         if (key.equals("continue")) return Z_RESUME;
-        for (int row = 0; row < 4; row++) if (key.equals(rowSection(row))) return Z_ROW0 + row;
+        for (int row = 0; row < RecommendationPlan.COUNT; row++) if (key.equals(rowSection(row))) return Z_ROW0 + row;
         return -1;
     }
 
@@ -786,7 +793,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         if (key.equals("actions")) return !drawerItems.isEmpty();
         if (key.equals("apps")) return !shelf.isEmpty();
         if (key.equals("continue")) return !resumeItems.isEmpty();
-        for (int row = 0; row < 4; row++) if (key.equals(rowSection(row))) return !rowItems[row].isEmpty();
+        for (int row = 0; row < RecommendationPlan.COUNT; row++) if (key.equals(rowSection(row))) return !rowItems[row].isEmpty();
         return false;
     }
 
@@ -904,60 +911,41 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         updatePicks(false);
     }
 
-    /** Keeps recommendation positions fixed while Home is visible; a new visit or the ten-minute refresh advances them. */
-    private void updatePicks(boolean forceRows) {
-        if (labelPaint == null) {
-            recs.prefetchRows(rowCycle);
-            return;
-        }
-        long now = SystemClock.elapsedRealtime();
-        boolean due = forceRows || rowSnapshotAt == 0 || now - rowSnapshotAt >= ROW_REFRESH_MS;
-        boolean empty = true;
-        for (List<Recs.Pick> row : rowItems) empty &= row.isEmpty();
-        if (due || empty) {
-            if (due) rowCycle++;
-            List<Recs.Pick> mixed = recs.row(null, 10, rowCycle);
-            List<Recs.Pick> anime = recs.row("anime", 10, rowCycle);
-            List<Recs.Pick> movies = recs.row("movie", 10, rowCycle);
-            List<Recs.Pick> shows = recs.row("tv", 10, rowCycle);
-            boolean available = !mixed.isEmpty() || !anime.isEmpty() || !movies.isEmpty() || !shows.isEmpty();
-            if (due || (empty && available)) {
-                if (!due) rowCycle++;
-                if (!due) {
-                    // When rows first become available, start at the next stable selection cycle.
-                    mixed = recs.row(null, 10, rowCycle);
-                    anime = recs.row("anime", 10, rowCycle);
-                    movies = recs.row("movie", 10, rowCycle);
-                    shows = recs.row("tv", 10, rowCycle);
+    private void updatePicks(boolean visit) {
+        if(labelPaint==null||!running)return;
+        long now=SystemClock.elapsedRealtime();boolean blocked=sheetOpen||sleepOpen||reordering;
+        boolean due=visit;for(int row=0;row<rowItems.length;row++)due|=rowItems[row].isEmpty()||recs.plan.replacements(row,false,now,rowRotatedAt[row],lastRemoteInput,zone==Z_ROW0+row,blocked)>0;
+        if(due&&!ranking){
+            ranking=true;long token=++rankGeneration;long cycle=++rowCycle;
+            recs.rankRows(cycle,rows->{
+                ranking=false;if(!running||token!=rankGeneration)return;
+                long at=SystemClock.elapsedRealtime();
+                for(int row=0;row<rowItems.length;row++){
+                    boolean empty=rowItems[row].isEmpty();int replace=recs.plan.replacements(row,visit,at,rowRotatedAt[row],lastRemoteInput,zone==Z_ROW0+row,sheetOpen||sleepOpen||reordering);
+                    if(row==1){if(empty||visit&&zone!=Z_ROW0+row){List<Recs.Pick> next=rows[row].subList(0,Math.min(20,rows[row].size()));updateRow(row,new ArrayList<>(next));rowRotatedAt[row]=at;}}
+                    else if(empty||visit||replace>0){updateRow(row,RecommendationPlan.rotate(rowItems[row],rows[row],recs.plan.specs[row].limit,replace,cycle));rowRotatedAt[row]=at;}
                 }
-                updateRow(0, mixed);
-                updateRow(1, anime);
-                updateRow(2, movies);
-                updateRow(3, shows);
-            }
-            if (due || available) rowSnapshotAt = now;
+                updateSectionLayout();applyPageScroll();layoutRows();warmVisible();wake();
+            });
         }
-        // A recommendation callback may mean only that an image finished loading. Redraw the held rows without
-        // selecting a different set of titles.
-        for (Layer layer : rowLayers) layer.invalidate();
-        int activeRow = isRowZone(zone) ? zone - Z_ROW0 : -1;
-        float activeX = focusX();
-        layoutRows();
-        if (isRowZone(zone) && rowItems[zone - Z_ROW0].isEmpty()) {
-            int next = closestPopulatedRow(activeRow);
-            if (next >= 0) enterRow(next, activeX);
-            else {
-                chooseDefaultFocus();
-                motionDirty = true;
-                retarget(false);
+        for(Layer layer:rowLayers)layer.invalidate();
+        warmVisible();
+        boolean own=rowItems[0].isEmpty()&&Photos.on(getContext());
+        Backdrop b=own?Photos.backdrop(getContext(),ownReady):rowItems[0].isEmpty()?null:recs.background(rowItems[0].get(0));
+        if(b!=null||rowItems[0].isEmpty()&&!own)showBackdrop(b);
+    }
+    private void warmVisible(){
+        List<Recs.Pick> visible=new ArrayList<>();
+        for(int row=0;row<rowItems.length;row++){
+            Layer layer=rowLayers[row];if(layer.getVisibility()!=VISIBLE||rowRects[row]==null)continue;
+            for(int i=0;i<rowRects[row].length;i++){
+                RectF rect=rowRects[row][i];
+                if(rect!=null&&rect.right>=-96*k&&rect.left<=w+96*k)visible.add(rowItems[row].get(i));
             }
         }
-        recs.prefetchRows(rowCycle);
-        boolean own = rowItems[0].isEmpty() && Photos.on(getContext());
-        Backdrop b = own ? Photos.backdrop(getContext(), ownReady)
-                : rowItems[0].isEmpty() ? null : recs.background(rowItems[0].get(0));
-        if (b != null || (rowItems[0].isEmpty() && !own)) showBackdrop(b);
-        spoken.focusMoved();
+        if(!rowItems[0].isEmpty())visible.add(rowItems[0].get(0));
+        recs.keepVisibleArtwork(visible);
+        recs.prefetchVisible(visible);
     }
 
     /** A user photo is ready for the home background, or newly imported photos are available. */
@@ -1301,7 +1289,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     private static boolean isRowZone(int zone) {
-        return zone >= Z_ROW0 && zone < Z_ROW0 + 4;
+        return zone >= Z_ROW0 && zone < Z_ROW0 + RecommendationPlan.COUNT;
     }
 
     private void enterRow(int row, float x) {
@@ -2577,6 +2565,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     // MARK: - Keys: only the arrows, OK, Back and Settings (system keys pass through to the system)
 
     public boolean onKey(KeyEvent e) {
+        lastRemoteInput=SystemClock.elapsedRealtime();
         wake();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (reordering) return reorderKey(e, down);
@@ -3307,13 +3296,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     private void drawRow(Canvas c, int row) {
         applyTone();
         float rowTop = rowTopUnits(row) * k;
-        String title;
-        switch (row) {
-            case 1: title = Ui.tr("Anime"); break;
-            case 2: title = Ui.tr("Movies"); break;
-            case 3: title = Ui.tr("TV Shows"); break;
-            default: title = Ui.tr("For You"); break;
-        }
+        String title=RecommendationPlan.name(row);
         c.drawText(title, MARGIN * k - Ui.leftBearing(rowLabel, title), rowTop + 28 * k, rowLabel);
         List<Recs.Pick> items = rowItems[row];
         if (items.isEmpty() || rowRects[row] == null) return;
@@ -3327,7 +3310,6 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
 
     private void drawRowCard(Canvas c, int row, int index) {
         Recs.Pick pick = rowItems[row].get(index);
-        Backdrop backdrop = recs.backdrop(pick);   // keep warming artwork ahead of horizontal navigation
         RectF base = rowRects[row][index];
         float focus = Ui.clamp(rowFocus[row][index].value), scale = 1 + 0.045f * focus;
         float cx = base.centerX(), cy = base.centerY() - 5 * k * focus;
@@ -3335,6 +3317,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         cell.set(cx - bw * scale / 2, cy - bh * scale / 2, cx + bw * scale / 2, cy + bh * scale / 2);
         // Include the complete growing shadow, not just the image, when rejecting offscreen draw work.
         if (cell.right < -96 * k || cell.left > w + 96 * k) return;
+        Backdrop backdrop = recs.backdrop(pick);
         c.save();
         c.translate(cx, cy);
         c.scale(scale, scale);

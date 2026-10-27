@@ -26,6 +26,7 @@ def main():
     p.add_argument("--trace", type=Path)
     p.add_argument("--cold", action="store_true")
     p.add_argument("--quick", action="store_true", help="Three warm returns and one navigation run for final restart checks")
+    p.add_argument("--explicit-home", action="store_true", help="Measure Vibe directly when recovery leaves another launcher as Home")
     args = p.parse_args()
     if args.out.exists() or (args.trace and args.trace.exists()):
         p.error("Output already exists")
@@ -41,13 +42,15 @@ def main():
             raise RuntimeError("No launch timing returned")
         return int(m[1])
 
-    result = {"protocol": "quick" if args.quick else "full", "warm_ms": [], "cold_ms": [], "navigation": []}
-    shell(HOME)
+    home = HOME + (" -n io.freemytv/.HomeActivity" if args.explicit_home else "")
+    result = {"protocol": "quick" if args.quick else "full", "explicit_home": args.explicit_home,
+              "warm_ms": [], "cold_ms": [], "navigation": []}
+    shell(home)
     time.sleep(3)
     for i in range(3 if args.quick else 7):
         shell("am start -W -n io.freemytv/.SettingsActivity")
         time.sleep(0.5)
-        result["warm_ms"].append(total(shell(HOME)))
+        result["warm_ms"].append(total(shell(home)))
         time.sleep(0.6)
     print("Warm Home median:", statistics.median(result["warm_ms"]), "ms", flush=True)
     if args.cold:
@@ -65,7 +68,7 @@ def main():
             shell("atrace --async_start -b 16384 -a io.freemytv gfx view sched freq am wm dalvik")
             tracing = True
         for i in range(1 if args.quick else 3):
-            shell(HOME)
+            shell(home)
             time.sleep(2)
             shell("dumpsys gfxinfo io.freemytv:home reset")
             for key in KEYS * 2:
@@ -90,7 +93,7 @@ def main():
     finally:
         if tracing:
             args.trace.write_text(shell("atrace --async_stop", timeout=60))
-        shell(HOME)
+        shell(home)
     output = shell("cat /proc/meminfo")
     m = re.search(r"MemAvailable:\s*(\d+)", output)
     result["available_kib"] = int(m[1]) if m else None

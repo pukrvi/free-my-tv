@@ -123,7 +123,9 @@ final class Backdrop {
         Canvas c = new Canvas(out);
         if (forLight) {
             // Light design: everything comes from the photo without scrims.
-            Bitmap wide = card(out, WIDE_W, WIDE_H), tall = withTall ? card(out, TALL_W, TALL_H) : null;
+            // Vibe cards draw at 420×236: 480×270 retains focus-scale detail at a quarter of the bitmap memory.
+            Bitmap wide = card(out, withTall || own ? WIDE_W : ui(480), withTall || own ? WIDE_H : ui(270));
+            Bitmap tall = withTall ? card(out, TALL_W, TALL_H) : null;
             int[] frost = reduce(out, FW, FH, 3, 3);
             if (!withTall && !own) {
                 int[] glass = reduce(out, GW, GH, 2, 2);

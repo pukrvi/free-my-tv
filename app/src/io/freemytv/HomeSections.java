@@ -10,7 +10,9 @@ import java.util.List;
 /** Mine's home composition, kept separate from app membership and the other home themes. */
 final class HomeSections {
     private HomeSections() {}
-    private static final String[] KEYS = {"actions", "weather", "apps", "continue", "for-you", "anime", "movies", "tv-shows"};
+    private static final String[] KEYS = {"actions","weather","apps","continue","for-me","anime-airing","new-movies","new-shows","trending","indian","sci-fi","korean","japanese","oscars","must-watch-movies","must-watch-tv"};
+    private static String migrate(String key){return key.equals("for-you")?"for-me":key.equals("anime")?"anime-airing":key.equals("movies")?"new-movies":key.equals("tv-shows")?"new-shows":key;}
+    private static String legacy(String key){return key.equals("for-me")?"for-you":key.equals("anime-airing")?"anime":key.equals("new-movies")?"movies":key.equals("new-shows")?"tv-shows":key;}
 
     static String[] keys() { return KEYS.clone(); }
 
@@ -22,14 +24,14 @@ final class HomeSections {
     static List<String> order(Context c) {
         List<String> order = new ArrayList<>();
         for (String key : prefs(c).getString("order", "").split(",")) {
-            if (known(key) && !order.contains(key)) order.add(key);
+            key=migrate(key);if (known(key) && !order.contains(key)) order.add(key);
         }
         for (String key : KEYS) if (!order.contains(key)) order.add(key);
         return order;
     }
 
     static boolean visible(Context c, String key) {
-        return known(key) && prefs(c).getBoolean("visible-" + key, true);
+        return known(key) && prefs(c).getBoolean("visible-" + key, prefs(c).getBoolean("visible-"+legacy(key),true));
     }
 
     static void setOrder(Context c, List<String> requested) {
