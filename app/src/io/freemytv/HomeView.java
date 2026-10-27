@@ -1175,19 +1175,9 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         c.restore();
 
         HomeApps.Item tile = resumeTiles.get(e.pkg);
-        if (tile == null && !e.title.isEmpty()) requestResumeTile(e.pkg);   // in the making: the dark tile stands in until it lands
+        if (tile == null) requestResumeTile(e.pkg);   // app branding also identifies sessions without a content title
         Bitmap art = Resume.artwork(getContext().getApplicationContext(), e, () -> resumeLayer.invalidate());
-        if (e.title.isEmpty()) {
-            fill.setShader(null);
-            fill.setColor(0xFF161618);
-            c.drawRoundRect(cell, radius * scale, radius * scale, fill);
-            fitPaint.set(rowTitle);
-            fitPaint.setTextSize(40 * k);
-            fitPaint.setColor(WHITE);
-            fitPaint.setTextAlign(Paint.Align.CENTER);
-            String name = TextUtils.ellipsize(e.app, fitPaint, cell.width() - 64 * k, TextUtils.TruncateAt.END).toString();
-            c.drawText(name, cell.centerX(), cell.centerY() + Ui.halfCap(fitPaint), fitPaint);
-        } else if (art != null) {
+        if (art != null) {
             String artKey = Resume.key(e);
             BitmapShader shader = resumeArtworkShaders.get(artKey);
             if (shader == null) {
@@ -1201,6 +1191,14 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
             fill.setShader(null);
             fill.setColor(0xFF161618);
             c.drawRoundRect(cell, radius * scale, radius * scale, fill);
+            if (e.title.isEmpty()) {
+                fitPaint.set(rowTitle);
+                fitPaint.setTextSize(40 * k);
+                fitPaint.setColor(WHITE);
+                fitPaint.setTextAlign(Paint.Align.CENTER);
+                String name = TextUtils.ellipsize(e.app, fitPaint, cell.width() - 64 * k, TextUtils.TruncateAt.END).toString();
+                c.drawText(name, cell.centerX(), cell.centerY() + Ui.halfCap(fitPaint), fitPaint);
+            }
         }
         if (e.dur > 0 && e.pos > 0 && e.pos < e.dur) {   // where it stopped, as on Apple TV's Up Next
             float pad = 16 * k, h = 7 * k, x0 = cell.left + pad, x1 = cell.right - pad, top = cell.bottom - 16 * k;
