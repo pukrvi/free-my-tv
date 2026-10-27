@@ -124,6 +124,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     private final List<String> sectionOrder;
     private final Map<String, Boolean> sectionEnabled = new HashMap<>();
     private final Map<String, Float> sectionTops = new HashMap<>();
+    private int layoutPopulation = -1;
     private float sectionDocumentBottom;
 
     // Night look (like Apple's "Automatic" appearance): darker from sunset to sunrise, with a 2 s transition.
@@ -139,6 +140,12 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     private final List<Recs.Pick>[] rowItems = new List[] {new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()};
     private final Spring[][] rowFocus = new Spring[4][];
     private final RectF[][] rowRects = new RectF[4][];
+    private static final class RowText {
+        String title, meta, titleDraw, metaDraw;
+        float width = -1;
+        int generation = -1;
+    }
+    private final RowText[][] rowText = new RowText[4][];
     private final float[] rowOffset = new float[4];
     private final int[] rowCol = new int[4];
     private final Paint[] rowScrimPaints = new Paint[4];
@@ -428,6 +435,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         lastStep = 0;
         data.addListener(this);
         recs.addListener(this);
+        recs.appsChanged();
         resumeWatch.start();
         reloadResume();   // what was recorded before, plus what the sessions say right now (just back from an app)
         data.refreshIfStale();
@@ -474,6 +482,8 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
 
     public void destroy() {
         pause();
+        if (bgFrom != null) bgFrom.releaseBackground();
+        if (bgTo != null) bgTo.releaseBackground();
         if (launcherApps != null) launcherApps.unregisterCallback(packages);
         click.release();
     }
@@ -799,6 +809,14 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     private void updateSectionLayout() {
+        int population = (!drawerItems.isEmpty() ? 1 : 0) | (!shelf.isEmpty() ? 2 : 0)
+                | (!resumeItems.isEmpty() ? 4 : 0)
+                | (Prefs.weather() || Prefs.quotes() && HomeData.active().length > 0 ? 8 : 0);
+        for (int i = 0; i < rowItems.length; i++) if (!rowItems[i].isEmpty()) population |= 16 << i;
+        // Composition/order are fixed for this view; scrolling changes translations, not section heights.
+        // Avoid rebuilding and boxing all section offsets on every spring-animation frame.
+        if (population == layoutPopulation) return;
+        layoutPopulation = population;
         float top = CHIPS_TOP;
         for (String key : sectionOrder) {
             if (!sectionShown(key)) continue;
@@ -934,7 +952,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         recs.prefetchRows(rowCycle);
         boolean own = rowItems[0].isEmpty() && Photos.on(getContext());
         Backdrop b = own ? Photos.backdrop(getContext(), ownReady)
-                : rowItems[0].isEmpty() ? null : recs.backdrop(rowItems[0].get(0));
+                : rowItems[0].isEmpty() ? null : recs.background(rowItems[0].get(0));
         if (b != null || (rowItems[0].isEmpty() && !own)) showBackdrop(b);
         spoken.focusMoved();
     }
@@ -968,9 +986,11 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         rowCol[row] = col;
         rowFocus[row] = new Spring[next.size()];
         rowRects[row] = new RectF[next.size()];
+        rowText[row] = new RowText[next.size()];
         for (int i = 0; i < next.size(); i++) {
             rowFocus[row][i] = new Spring(0.32f, 0.78f, 0);
             rowRects[row][i] = new RectF();
+            rowText[row][i] = new RowText();
         }
         rowOffset[row] = 0;
         layoutRow(row);
@@ -1434,6 +1454,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         }
         if (e >= 1) {
             bgFadeAt = 0;
+            if (bgFrom != null && bgFrom != bgTo) bgFrom.releaseBackground();
             bgFrom = null;
             if (bgTo == null) {
                 neutralGlass();
@@ -2546,6 +2567,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
 
     private void appsChanged() {
         appsStale = true;
+        recs.appsChanged();
         if (running) reloadSoon();
     }
 
@@ -3286,11 +3308,14 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
 
     private void drawRowCard(Canvas c, int row, int index) {
         Recs.Pick pick = rowItems[row].get(index);
+        Backdrop backdrop = recs.backdrop(pick);   // keep warming artwork ahead of horizontal navigation
         RectF base = rowRects[row][index];
         float focus = Ui.clamp(rowFocus[row][index].value), scale = 1 + 0.045f * focus;
         float cx = base.centerX(), cy = base.centerY() - 5 * k * focus;
         float bw = base.width(), bh = base.height(), radius = 18 * k;
         cell.set(cx - bw * scale / 2, cy - bh * scale / 2, cx + bw * scale / 2, cy + bh * scale / 2);
+        // Include the complete growing shadow, not just the image, when rejecting offscreen draw work.
+        if (cell.right < -96 * k || cell.left > w + 96 * k) return;
         c.save();
         c.translate(cx, cy);
         c.scale(scale, scale);
@@ -3300,7 +3325,6 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         shadows.draw(c, tmp, radius, DEEP_BLUR * k, shadowDeep);
         c.restore();
 
-        Backdrop backdrop = recs.backdrop(pick);
         Bitmap image = backdrop == null ? null : backdrop.wide;
         if (image != null) {
             roundImage(c, image, backdrop.wideShader, cell, radius * scale);
@@ -3319,14 +3343,19 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         }
         if (pick.title == null) return;
         rowTitle.setTextSize(22 * k);
-        fitPaint.set(rowTitle);
-        String caption = TextUtils.ellipsize(pick.title, fitPaint, bw, TextUtils.TruncateAt.END).toString();
-        c.drawText(caption, base.left, base.bottom + 34 * k, rowTitle);
-        if (pick.meta != null && !pick.meta.isEmpty()) {
-            rowMeta.setTextSize(18 * k);
+        rowMeta.setTextSize(18 * k);
+        RowText text = rowText[row][index];
+        if (text.width != bw || text.generation != Ui.generation || !java.util.Objects.equals(text.title, pick.title)
+                || !java.util.Objects.equals(text.meta, pick.meta)) {
+            text.width = bw; text.generation = Ui.generation; text.title = pick.title; text.meta = pick.meta;
+            fitPaint.set(rowTitle);
+            text.titleDraw = TextUtils.ellipsize(pick.title, fitPaint, bw, TextUtils.TruncateAt.END).toString();
             fitPaint.set(rowMeta);
-            String meta = TextUtils.ellipsize(pick.meta, fitPaint, bw, TextUtils.TruncateAt.END).toString();
-            c.drawText(meta, base.left, base.bottom + 62 * k, rowMeta);
+            text.metaDraw = pick.meta == null ? "" : TextUtils.ellipsize(pick.meta, fitPaint, bw, TextUtils.TruncateAt.END).toString();
+        }
+        c.drawText(text.titleDraw, base.left, base.bottom + 34 * k, rowTitle);
+        if (pick.meta != null && !pick.meta.isEmpty()) {
+            c.drawText(text.metaDraw, base.left, base.bottom + 62 * k, rowMeta);
         }
     }
 

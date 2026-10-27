@@ -1,0 +1,52 @@
+{
+  "protocol": 1,
+  "warm_ms": [
+    100,
+    72,
+    76,
+    86,
+    83,
+    74,
+    80
+  ],
+  "cold_ms": [
+    877,
+    660,
+    717
+  ],
+  "navigation": [
+    {
+      "frames": 712,
+      "janky": 17,
+      "p50_ms": 20,
+      "p90_ms": 36,
+      "slow_ui": 10,
+      "slow_draw": 17,
+      "jank_percent": 2.39
+    },
+    {
+      "frames": 710,
+      "janky": 13,
+      "p50_ms": 22,
+      "p90_ms": 32,
+      "slow_ui": 9,
+      "slow_draw": 13,
+      "jank_percent": 1.83
+    },
+    {
+      "frames": 705,
+      "janky": 14,
+      "p50_ms": 20,
+      "p90_ms": 29,
+      "slow_ui": 9,
+      "slow_draw": 14,
+      "jank_percent": 1.99
+    }
+  ],
+  "available_kib": 639792,
+  "home_pss_kib": 90134,
+  "warm_median_ms": 80,
+  "navigation_jank_median_percent": 1.99,
+  "navigation_p50_median_ms": 20,
+  "target_met": false
+}

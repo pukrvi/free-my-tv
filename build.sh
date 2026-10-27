@@ -25,9 +25,11 @@ KEYTOOL="${JAVA_HOME:+$JAVA_HOME/bin/}keytool"
 command -v "$JAVAC" >/dev/null 2>&1 || { echo "JDK not found. Install JDK 17 and set JAVA_HOME."; exit 1; }
 
 # --- Settings: config.properties -> Config.java
-CONFIG=config.properties
+CONFIG="${FREEMYTV_CONFIG:-config.properties}"
 if $GENERIC; then
   CONFIG=/dev/null   # every value at its default; the place comes from the TV's time zone (Place)
+elif [ -n "${FREEMYTV_CONFIG:-}" ] && [ ! -f "$CONFIG" ]; then
+  echo "FREEMYTV_CONFIG does not name an existing file." >&2; exit 1
 elif [ ! -f config.properties ]; then
   cp config.example.properties config.properties
   echo "Created config.properties: add your TMDB key and your city there (optional), then build again."

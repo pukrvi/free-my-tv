@@ -179,6 +179,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     void start() {
         if (running) return;
         running = true;
+        recs.appsChanged();
         if (worker.isShutdown()) worker = Executors.newSingleThreadExecutor();
         startedAt = clock();
         lastFrame = 0;

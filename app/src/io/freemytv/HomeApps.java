@@ -174,12 +174,12 @@ final class HomeApps {
             if (items.size() >= max) break;
             Intent launch = launchIntent(pm, pkg);
             if (launch == null) continue;
-            ResolveInfo ri = pm.resolveActivity(launch, 0);
             String[] d = known(pkg);
             Item it = new Item();
             it.kind = APP;
             it.pkg = pkg;
             if (d == null) {
+                ResolveInfo ri = pm.resolveActivity(launch, 0);
                 // An app picked in Settings > Shelf that isn't in SHELF: its own name and TV art.
                 it.key = pkg;
                 it.label = ri != null ? String.valueOf(ri.loadLabel(pm)) : pkg;

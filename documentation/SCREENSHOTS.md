@@ -48,6 +48,12 @@ Language, temperature, Appearance and navigation sounds live here. Appearance me
 
 ![Simba original upstream home on the TCL TV](screenshots/theme-simba.png)
 
+## TCL performance after restart
+
+![About this TV performance snapshot](screenshots/tcl-g10-about-performance.png)
+
+Captured October 27, 2026 from optimization implementation `2554711` on the TCL Smart TV Pro, Android 12, at 1920×1080 after one restart. Inspected for visual clarity and private information. The current Vibe column shows 90 ms / 782 MB / 71 MB; MB labels represent MiB. Original values are retained historical measurements, not a fresh comparison. [Measurement method and limits](TCL_G10_OPTIMIZATION.md). Later recovery/cache hardening has host coverage but is not represented by this installed build.
+
 ## Updating the gallery
 
 After runtime changes, capture an identifiable combined build and record commit, dirty state, build/version, exact model, OS/firmware, date, remote state and toggles. Inspect the whole image and review location, viewing history and account details before publication. Prefer public test content. Keep fallback states visible when they explain a limitation. Update the associated test result rather than inferring playback or recovery success from a screenshot.

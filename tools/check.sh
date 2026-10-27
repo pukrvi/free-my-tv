@@ -16,6 +16,7 @@ case "$what" in
 esac
 
 if [ "$what" = all ] || [ "$what" = android ]; then
+  tools/run-host-checks.sh
   ./build.sh
 fi
 

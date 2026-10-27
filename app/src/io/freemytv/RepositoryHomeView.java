@@ -427,6 +427,7 @@ final class RepositoryHomeView extends ViewGroup implements HomeSurface, Choreog
     public void resume() {
         if (running) return;
         running = true;
+        recs.appsChanged();
         checkNight(false);
         boolean h24 = Prefs.clock24();
         if (h24 != clock24) {   // 12/24 hours changed in the TV's settings: the clock and the drawer's times again
@@ -2158,6 +2159,7 @@ final class RepositoryHomeView extends ViewGroup implements HomeSurface, Choreog
     };
 
     private void appsChanged() {
+        recs.appsChanged();
         appsStale = true;
         if (running) reloadSoon();
     }

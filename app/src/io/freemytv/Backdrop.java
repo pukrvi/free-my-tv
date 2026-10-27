@@ -43,10 +43,34 @@ final class Backdrop {
     final int[] glass;      // lightly blurred (Liquid Glass: the photo shows through the glass)
     final Bitmap wide, tall;            // the photo on the cards
     final BitmapShader wideShader, tallShader;   // theirs, for the rounded cards: they go away with the backdrop
-    final int[] light, lightGlass;     // by day: the frosted and glass versions, lightened
-    final Bitmap lightImage;            // by day: the background (the lightened frosted version, scaled up on screen)
-    final int[] nightFrost, nightGlass; // at night: frosted (the bottom drawer's frosted glass) and glass, darkened
-    final Bitmap nightImage;            // at night: the background (the darkened frosted version)
+    int[] light, lightGlass;     // by day: the frosted and glass versions, lightened
+    Bitmap lightImage;            // by day: the background (the lightened frosted version, scaled up on screen)
+    int[] nightFrost, nightGlass; // at night: frosted (the bottom drawer's frosted glass) and glass, darkened
+    Bitmap nightImage;            // at night: the background (the darkened frosted version)
+    private int[] rowGlass;
+    private volatile boolean backgroundReady = true;
+
+    boolean backgroundReady() { return backgroundReady; }
+
+    /** Runs on Recs' image worker: only backgrounds actually shown need these tinted copies. */
+    synchronized void prepareBackground() {
+        if (backgroundReady) return;
+        light = whiten(frost.clone(), 0.82f);
+        lightGlass = whiten(rowGlass.clone(), 0.74f);
+        nightFrost = darken(frost.clone(), 0.76f);
+        nightGlass = darken(rowGlass.clone(), 0.56f);
+        lightImage = Bitmap.createBitmap(light, FW, FH, Bitmap.Config.ARGB_8888);
+        nightImage = Bitmap.createBitmap(nightFrost, FW, FH, Bitmap.Config.ARGB_8888);
+        backgroundReady = true;
+    }
+
+    /** Cards keep their landscape image; a completed fade no longer needs this background's tinted copies. */
+    synchronized void releaseBackground() {
+        if (rowGlass == null) return;
+        backgroundReady = false;
+        light = lightGlass = nightFrost = nightGlass = null;
+        lightImage = nightImage = null;
+    }
 
     private Backdrop(Bitmap image, int[] frost, int[] glass, Bitmap wide, Bitmap tall, int[] light, int[] lightGlass,
                      int[] night, int[] nightGlass) {
@@ -81,6 +105,11 @@ final class Backdrop {
      * right, so it still reads as your photo. The glass and the drawer stay as they are.
      */
     static Backdrop make(Bitmap src, boolean forLight, boolean own) {
+        return make(src, forLight, own, true);
+    }
+
+    /** Vibe's landscape-only rows never display the portrait copy; other designs retain it. */
+    static Backdrop make(Bitmap src, boolean forLight, boolean own, boolean withTall) {
         // Cropped to 16:9 at the source's resolution first, then filtered down (no step over 2×).
         Bitmap crop = center(src, (float) W / H);
         if (crop != src) src.recycle();
@@ -94,8 +123,16 @@ final class Backdrop {
         Canvas c = new Canvas(out);
         if (forLight) {
             // Light design: everything comes from the photo without scrims.
-            Bitmap wide = card(out, WIDE_W, WIDE_H), tall = card(out, TALL_W, TALL_H);
+            Bitmap wide = card(out, WIDE_W, WIDE_H), tall = withTall ? card(out, TALL_W, TALL_H) : null;
             int[] frost = reduce(out, FW, FH, 3, 3);
+            if (!withTall && !own) {
+                int[] glass = reduce(out, GW, GH, 2, 2);
+                out.recycle();
+                Backdrop rows = new Backdrop(null, frost, null, wide, null, null, null, null, null);
+                rows.rowGlass = glass;
+                rows.backgroundReady = false;
+                return rows;
+            }
             int[] light = whiten(frost.clone(), 0.82f);
             int[] glass = reduce(out, GW, GH, 2, 2);
             int[] lightGlass = whiten(glass.clone(), 0.74f);

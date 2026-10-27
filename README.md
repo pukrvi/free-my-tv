@@ -23,7 +23,7 @@ A remote-first home for Android TV: your apps, useful weather, and room to keep 
 
 ## Where the project stands
 
-Home, playback and Settings have been integrated into `main` after their device checks. This remains an actively developed source build. The public name is **Vibe TV**; its Android package remains `io.freemytv` and its APK remains `FreeMyTV.apk` so existing installations can keep receiving updates signed with the same key. The repository remains `pukrvi/free-my-tv`. No new published Vibe TV release is claimed here.
+Home, playback and Settings have been integrated into `main` after their device checks. This remains an actively developed source build. The public name is **Vibe TV**; its Android package remains `io.freemytv` and its APK remains `FreeMyTV.apk` so existing installations can keep receiving updates signed with the same key. The repository is `pukrvi/vibe-tv`. No new published Vibe TV release is claimed here.
 
 The primary target is a TCL Smart TV Pro running Android 12, with a 1920 × 1080 reference layout. Other hardware support comes from upstream until a contributor supplies a Vibe TV test report. LG/webOS and Samsung/Tizen packaging is retained, but those interfaces have not been verified to match the latest Android work.
 
@@ -32,6 +32,14 @@ The primary target is a TCL Smart TV Pro running Android 12, with a 1920 × 1080
 **Themes** changes the home design. **Home Layout** moves or hides Vibe TV 1 sections. **Preferences** changes language, temperature, light/dark appearance and sounds. Open **Settings** from the home shortcut; **TV Settings** opens Android’s own controls.
 
 The [feature register](FEATURES.md) records what exists, where its code lives, what was tested, and what remains unfinished. The [compatibility register](COMPATIBILITY.md) distinguishes launching an app from actually recording and resuming a title.
+
+## TCL performance and privacy
+
+On the tested TCL Smart TV Pro running Android 12, Vibe TV now avoids unused portrait artwork and prepares glass backgrounds only when needed. The theme, Settings and Continue Watching remain unchanged. Optional Google feedback, Play Movies and printing cleanup is reversible; Calendar sync stays enabled.
+
+![Actual TCL About screen after optimization and one restart](documentation/screenshots/tcl-g10-about-performance.png)
+
+After restart, About showed **90 ms Home response and 782 MiB available memory**, compared with the owner's earlier 219 ms and 680 MiB readings. These are snapshots; the screenshot's Google TV column is a retained historical baseline. Controlled warm Home returns improved from 80 to 63 ms; cold launch and typical frame times did not improve consistently. [Full results, recovery details and limitations](documentation/TCL_G10_OPTIMIZATION.md).
 
 ## Try it or help build it
 

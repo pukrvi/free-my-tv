@@ -42,6 +42,12 @@ git diff --check
 
 Device testing follows [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). Get the owner's approval before installing, changing preferences, switching modes, rebooting or sending device input. Coordinate access when another person/chat owns the TV. Document what was changed and restored; leave mode switching to the person at the TV. Never uninstall/clear system app data or alter picture, sound, network or account settings as part of a launcher check.
 
+For privacy and performance investigation, start with the [read-only audit](documentation/TV_AUDIT.md).
+It compares selected package states with our existing policy and reads memory/frame counters without
+applying cleanup. The [CleanYourTV comparison](documentation/CLEANYOURTV_REVIEW.md) records candidates,
+firmware-specific exclusions and measurement limits. Its offline tests run with
+`python3 -m unittest discover -s tools -p 'test_tv_audit.py'`.
+
 ## Open a pull request
 
 Use the template and describe the problem, resulting behavior, validation and remaining limits. Include issue links, exact tested revision/build, hardware and app versions, and before/after screenshots for UI changes. State “not tested” for unavailable hardware; launching an app is distinct from resuming its content. Update the feature/compatibility registers and screenshot record when claims change.
