@@ -2,13 +2,12 @@
 
 [Project](README.md) · [Contributing](CONTRIBUTING.md)
 
-Runtime strings currently retain Free My TV branding. Coordinate a runtime rename across catalogs rather than changing package IDs or recovery commands.
+Settings uses Vibe TV; the installed Android app label remains Free My TV. Keep package IDs and recovery commands intact when editing translations.
 
 ## Translations
 
 On Google TV, LG and Samsung, each language is one file, [`app/assets/i18n/<lang>.json`](app/assets/i18n), keyed by the
-English text in the code. *Automatic* follows the TV's language and uses any language that has a file (English otherwise); *Home
-Settings* → *Language* lists them all. Today: English, Portuguese, Spanish, German, French, Italian, Dutch, Polish,
+English text in the code. *Automatic* follows the TV's language and uses any language that has a file (English otherwise); *Settings*, *Preferences*, *Language* lists them all. Available languages: English, Portuguese, Spanish, German, French, Italian, Dutch, Polish,
 Swedish, Danish, Norwegian, Finnish, Czech, Romanian, Turkish, Russian, Ukrainian, Greek, Japanese, Korean, Simplified
 and Traditional Chinese, Hindi, Indonesian, Vietnamese and Thai. Portuguese, Spanish, German, Russian, Thai and Turkish were translated by hand and are the
 reference (fix them by hand); the others were machine-made, and corrections from native speakers are welcome.

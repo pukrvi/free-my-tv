@@ -1,36 +1,34 @@
-# Publishing the Vibe TV wiki
+# One set of guides, two places to read them
 
-[Open the wiki](https://github.com/pukrvi/vibe-tv/wiki) · [Contribution guide](../CONTRIBUTING.md)
+[GitHub Wiki](https://github.com/pukrvi/vibe-tv/wiki) reads from the same guides as the repository. Edit the source files only: README, installation, feature status, privacy and the guides under `documentation/`. The wiki generator changes links for GitHub and adds navigation. It does not maintain a second version of the prose.
 
-GitHub stores the wiki in **`pukrvi/vibe-tv.wiki.git`**, separately from the app repository. A normal app/documentation PR cannot directly publish wiki pages. The former one-page welcome was a publication gap, not an app merge conflict.
+Wiki Home comes from the illustrated [documentation index](INDEX.md), not the README. Images are served from their single repository location. Generated pages go to ignored `.wiki-build/` or a wiki checkout, not into another tracked documentation directory.
 
-The reviewed source lives in [wiki/](wiki/). `tools/sync_wiki.py` builds those pages from the primary guides and rewrites relative file links to wiki pages or repository files. Performance images are copied with the pages, so wiki imagery does not depend on an unmerged app branch. The wiki publisher owns those generated page names; unrelated wiki pages are preserved.
-
-## Refresh and review
+## Preview
 
 ```sh
-python3 tools/render_performance.py
 python3 tools/sync_wiki.py
-python3 -m unittest tools/test_performance_assets.py -v
 ```
 
-Commit the primary guides, generated wiki pages and performance assets together in a linked documentation PR. Keep all snapshot caveats and provenance intact. Primary documentation is the editing source; direct wiki edits should be brought back into that source before regenerating, so publication does not silently overwrite them.
+Review `.wiki-build/`. The page mapping is in `tools/sync_wiki.py`. Add a mapping when a new source guide needs a wiki page.
 
-## Publish the separate wiki
+## Publish after the documentation merges
 
-With your normal GitHub Git authentication configured:
+GitHub stores a wiki in a separate Git repository. A normal pull request cannot update it by itself.
 
 ```sh
 git clone https://github.com/pukrvi/vibe-tv.wiki.git /tmp/vibe-tv-wiki
 python3 tools/sync_wiki.py --destination /tmp/vibe-tv-wiki
 git -C /tmp/vibe-tv-wiki diff --check
 git -C /tmp/vibe-tv-wiki add --all
-git -C /tmp/vibe-tv-wiki commit -m 'Publish current Vibe TV guides and performance visuals'
+git -C /tmp/vibe-tv-wiki commit -m 'Refresh wiki from source guides'
 git -C /tmp/vibe-tv-wiki push origin HEAD
 ```
 
-Inspect the wiki diff and fetch its latest remote state before publishing. If other people changed the generated pages, reconcile those changes into the source guides first. The destination writer never runs Git or pushes by itself, and preserves unrelated destination files. Validate the public Home page, navigation and performance images after pushing. A repository PR being merged is not evidence that the wiki was published.
+Fetch and review wiki changes before publishing. Bring any direct edits to generated pages back into the source guides first. The generator preserves unrelated files, runs no Git commands and never pushes. Check public Home, navigation and image links afterward.
 
-## Branch notice versus conflicts
+The old tracked `documentation/wiki/` copies have been removed. Existing wiki image copies can be removed once all pages use the repository image URLs.
 
-GitHub's “ahead of / behind” notice compares this fork's history with upstream Free My TV. It does not by itself mean that a PR has conflicts. This documentation update deliberately retains Vibe TV's upstream baseline; upstream integration and app compatibility testing are separate work. Use a clean docs branch and squash its PR instead of rewriting already published main history to remove that notice.
+## Branch history
+
+GitHub's ahead/behind notice compares this fork with upstream Free My TV. It does not prove a pull request has conflicts. Upstream integration stays separate from documentation work; published main history is preserved.

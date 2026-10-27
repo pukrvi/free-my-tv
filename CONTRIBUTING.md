@@ -1,18 +1,18 @@
 # Contributing to Vibe TV
 
-Thank you for helping make TV software calmer and more useful. Bug reports, testing on another model, translations, accessibility checks and documentation are welcome alongside code.
+Report a bug, test your TV, improve a translation, or send a patch. Documentation and accessibility checks are welcome too.
 
 ## Choose a contribution
 
 Check [feature status](FEATURES.md) and [known compatibility limits](COMPATIBILITY.md), then search existing issues and pull requests. Use a bug report for broken behavior, a feature request for an idea, or a hardware report for a test result. Discuss broad architecture, new dependencies, safety changes or a new platform before investing in a large patch. Small focused fixes can go straight to a pull request.
 
-If you fork Vibe TV, please send back your exact TV model and the apps/actions you tested—even when something fails. This request helps the community and adds no condition to the MIT license.
+If you fork Vibe TV, please send back your exact TV model and the apps/actions you tested, even when something fails. This request helps the community and adds no condition to the MIT license.
 
 ## Set up a development checkout
 
 ```sh
-git clone https://github.com/pukrvi/free-my-tv.git
-cd free-my-tv
+git clone https://github.com/pukrvi/vibe-tv.git
+cd vibe-tv
 git switch -c codex/describe-your-change
 ```
 
@@ -58,4 +58,4 @@ Maintain upstream attribution and license notices. Separate refactoring from unr
 
 Be respectful, specific and patient. Critique code and behavior, not people. Harassment, discriminatory remarks and sharing another person's private information are unacceptable. Maintainers may remove harmful content or restrict participation. Raise a concern privately with a repository maintainer through an available contact channel; do not post sensitive details publicly.
 
-For suspected vulnerabilities, follow [SECURITY.md](SECURITY.md). For documentation navigation and ongoing work, start at [README.md](README.md).
+For suspected vulnerabilities, follow [SECURITY.md](SECURITY.md). For the current feature status, start at [README.md](README.md).
