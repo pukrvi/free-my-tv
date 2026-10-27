@@ -4,7 +4,7 @@
 
 A remote-first home for Android TV: your apps, useful weather, and room to keep watching. Open source, built on [Free My TV](https://github.com/simbasjungles/free-my-tv), with full credit to its creators.
 
-[Install](INSTALLATION.md) · [Feature status](FEATURES.md) · [Hardware & apps](COMPATIBILITY.md) · [Contribute](CONTRIBUTING.md) · [Screenshots](documentation/SCREENSHOTS.md) · [Design](DESIGN.md)
+[Install](INSTALLATION.md) · [Feature status](FEATURES.md) · [Hardware & apps](COMPATIBILITY.md) · [Contribute](CONTRIBUTING.md) · [Screenshots](documentation/SCREENSHOTS.md) · [Design](DESIGN.md) · [Wiki](https://github.com/pukrvi/vibe-tv/wiki)
 
 ![Vibe TV development build on the TCL test TV: shortcuts, weather, app dock and Continue Watching](documentation/screenshots/home-playback.png)
 
@@ -37,9 +37,19 @@ The [feature register](FEATURES.md) records what exists, where its code lives, w
 
 On the tested TCL Smart TV Pro running Android 12, Vibe TV now avoids unused portrait artwork and prepares glass backgrounds only when needed. The theme, Settings and Continue Watching remain unchanged. Optional Google feedback, Play Movies and printing cleanup is reversible; Calendar sync stays enabled.
 
-![Actual TCL About screen after optimization and one restart](documentation/screenshots/tcl-g10-about-performance.png)
+![Original Google TV, Vibe TV before optimization, and optimized Vibe TV: Home response and available memory](documentation/performance/comparison.png)
 
-After restart, About showed **90 ms Home response and 782 MiB available memory**, compared with the owner's earlier 219 ms and 680 MiB readings. These are snapshots; the screenshot's Google TV column is a retained historical baseline. Controlled warm Home returns improved from 80 to 63 ms; cold launch and typical frame times did not improve consistently. [Full results, recovery details and limitations](documentation/TCL_G10_OPTIMIZATION.md).
+| About snapshot | Original Google TV | Vibe TV before optimization | Vibe TV optimized + restart |
+|---|---:|---:|---:|
+| Home response · lower is better | 150 ms | 219 ms | **90 ms** |
+| Available memory · higher is better | 594 MiB | 680 MiB | **782 MiB** |
+| Home process memory · lower is better | 124 MiB | Not recorded | **71 MiB** |
+
+These are **historical snapshots, not a controlled three-way benchmark**. Original is the retained factory baseline; the middle reading was reported by the owner; the optimized reading followed a restart. Reboot and cache state affect RAM. Controlled warm Home returns improved from 80 to 63 ms (about 21%); cold launch and typical frame times did not improve consistently. [Raw evidence, recovery details and limitations](documentation/TCL_G10_OPTIMIZATION.md).
+
+![Performance highlights: 59% lower Home response time and 15% more available RAM versus pre-optimization Vibe; 43% lower Home process memory versus historical Google TV](documentation/performance/highlights.png)
+
+[Download the comparison](documentation/performance/comparison.png) · [Download the shareable highlights](documentation/performance/highlights.png) · [Data, formulas and reproduction](documentation/performance/README.md)
 
 ## Try it or help build it
 
@@ -51,7 +61,7 @@ Follow [INSTALLATION.md](INSTALLATION.md) to build and install this fork. A gene
 
 Contributions include bug reports, translations, documentation, remote navigation checks and hardware reports. If you fork or test Vibe TV, please submit your **exact manufacturer/model, OS and firmware, tested commit, app versions, and which actions worked or failed** using the [hardware report template](.github/ISSUE_TEMPLATE/hardware_report.yml). This is a community request, not an extra license restriction.
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md). Device work follows [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). [Privacy](PRIVACY.md), [security reporting](SECURITY.md), and [credits](CREDITS.md) explain the boundaries and provenance.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). The [GitHub Wiki](https://github.com/pukrvi/vibe-tv/wiki) has the navigable guides; [wiki publication](documentation/WIKI.md) explains how its separate repository stays in sync. Device work follows [ANDROID_TV_TESTING.md](ANDROID_TV_TESTING.md). [Privacy](PRIVACY.md), [security reporting](SECURITY.md), and [credits](CREDITS.md) explain the boundaries and provenance.
 
 ## License
 
