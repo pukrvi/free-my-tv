@@ -2,7 +2,7 @@
 
 [GitHub Wiki](https://github.com/pukrvi/vibe-tv/wiki) reads from the same guides as the repository. Edit the source files only: README, installation, feature status, privacy and the guides under `documentation/`. The wiki generator changes links for GitHub and adds navigation. It does not maintain a second version of the prose.
 
-Wiki Home is generated directly from README. Images are served from their single repository location. Generated pages go to ignored `.wiki-build/` or a wiki checkout, not into another tracked documentation directory.
+Wiki Home comes from the illustrated [documentation index](INDEX.md), not the README. Images are served from their single repository location. Generated pages go to ignored `.wiki-build/` or a wiki checkout, not into another tracked documentation directory.
 
 ## Preview
 

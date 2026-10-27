@@ -3,8 +3,15 @@
     "status": "landed",
     "commit": "3e382d0",
     "screenshot": "documentation/screenshots/home-playback.png",
-    "observed": ["YouTube and Stremio artwork", "titles and progress on the home screen"],
-    "limits": ["Does not visually establish exact episode or saved-position reopening", "PR #28 is separate until merged", "Provider support differs"]
+    "observed": [
+      "YouTube and Stremio artwork",
+      "titles and progress on the home screen"
+    ],
+    "limits": [
+      "Does not visually establish exact episode or saved-position reopening",
+      "PR #28 is separate until merged",
+      "Provider support differs"
+    ]
   },
   "privacy": {
     "status": "landed",
@@ -13,8 +20,15 @@
     "after": "documentation/screenshots/home-playback.png",
     "after_kind": "actual TCL capture",
     "source": "documentation/TCL_G10_OPTIMIZATION.md",
-    "observed": ["No sponsored launcher rows", "Google feedback, Play Movies and printing disabled reversibly in the TCL test"],
-    "limits": ["No matched tracker before/after measurement", "No measured trackers-blocked count", "Does not block in-app advertising or all firmware telemetry"]
+    "observed": [
+      "No sponsored launcher rows",
+      "Google feedback, Play Movies and printing disabled reversibly in the TCL test"
+    ],
+    "limits": [
+      "No matched tracker before/after measurement",
+      "No measured trackers-blocked count",
+      "Does not block in-app advertising or all firmware telemetry"
+    ]
   },
   "recommendations": {
     "status": "pending",
@@ -24,5 +38,29 @@
     "approved_copy": [],
     "limitations": [],
     "gate": "Wait for merged implementation, verified routing/source details and reviewed actual-device screenshot. Do not publish a simulated working-engine image."
+  },
+  "recommendations_baseline": {
+    "status": "existing-baseline",
+    "screenshot": "documentation/screenshots/recommendations-baseline.png",
+    "source_capture": "feedback-anime.png",
+    "source_commit": null,
+    "crop": [
+      0,
+      290,
+      1920,
+      1080
+    ],
+    "dimensions": [
+      1920,
+      790
+    ],
+    "observed": [
+      "Earlier TCL TMDB For You and Anime shelves"
+    ],
+    "limits": [
+      "Not the new Stremio/Kitsu engine",
+      "Exact capture build hash was not recorded",
+      "Crop removes the viewing-history row above; remaining pixels unchanged"
+    ]
   }
 }

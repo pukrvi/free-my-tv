@@ -59,3 +59,9 @@ Captured October 27, 2026 from optimization implementation `2554711` on the TCL 
 After runtime changes, capture an identifiable combined build and record commit, dirty state, build/version, exact model, OS/firmware, date, remote state and toggles. Inspect the whole image and review location, viewing history and account details before publication. Prefer public test content. Keep fallback states visible when they explain a limitation. Update the associated test result rather than inferring playback or recovery success from a screenshot.
 
 `docs/assets/` and `.github/preview.webp` contain inherited upstream demos; they are not current Vibe TV acceptance evidence.
+
+## Current recommendation shelves, earlier capture
+
+![TMDB For You and Anime shelves on the TCL](screenshots/recommendations-baseline.png)
+
+A detail crop of the earlier `feedback-anime.png` hardware capture: source rectangle `(0, 290, 1920, 1080)`, exported at 1920 × 790. The crop removes the Continue Watching history above the recommendation shelves; the remaining pixels are unchanged. It shows the existing TMDB For You and Anime rows, not the new Stremio/Kitsu engine. The exact source build hash was not recorded alongside this capture. Titles and app names are catalog recommendations, not an account-history claim. The full source stays local under `/tmp/free-my-tv-tv-check/`.

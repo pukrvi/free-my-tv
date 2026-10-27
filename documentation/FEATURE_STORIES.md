@@ -6,6 +6,10 @@ Recommendations and Continue Watching are the headline product stories. Performa
 
 ## Recommendations
 
+![Current TMDB shelves, detail from an earlier TCL capture](screenshots/recommendations-baseline.png)
+
+This image shows the existing TMDB implementation. Its [capture record](SCREENSHOTS.md#current-recommendation-shelves-earlier-capture) identifies the crop and unknown source build. It is separate from the new engine image, which remains gated below.
+
 The landed baseline offers For You, Anime, Movies and TV Shows, with TMDB picks filtered to installed services and a long-OK hide action. It requires the configured TMDB key. This is the current product, not a promise that every service's private recommendation API or account history is available.
 
 The separate Stremio/Kitsu engine is in active development. Its source feeds, deduplication/season identity, category planner, availability checks, routing priorities and refresh rules are still being implemented and tested. A prototype/planner result alone does not establish a landed on-TV feature.

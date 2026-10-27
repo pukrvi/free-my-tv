@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "https://github.com/pukrvi/vibe-tv"
 SOURCES = {
-    "Home": "README.md",
+    "Home": "documentation/INDEX.md",
     "Getting-Started": "INSTALLATION.md",
     "Features": "FEATURES.md",
     "Hardware-and-Apps": "COMPATIBILITY.md",

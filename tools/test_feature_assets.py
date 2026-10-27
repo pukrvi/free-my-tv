@@ -245,11 +245,11 @@ class WikiSingleSourceTests(unittest.TestCase):
         cls.wiki = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.wiki)
 
-    def test_home_is_rewritten_readme_plus_generated_source_note(self):
+    def test_home_is_rewritten_documentation_index_plus_generated_source_note(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
             self.wiki.generate(output)
-            source = "README.md"
+            source = "documentation/INDEX.md"
             body = self.wiki.rewrite_links((ROOT / source).read_text(), source)
             note = (f"\n\nSource: [{source}]({self.wiki.BASE}/blob/main/{source}). "
                     "This page is generated; edit the source guide.\n")
@@ -278,13 +278,45 @@ class WikiSingleSourceTests(unittest.TestCase):
             self.assertTrue(all(path.is_file() and path.suffix == ".md" for path in output.iterdir()))
 
     def test_every_page_uses_existing_authoritative_guide_and_home_has_no_second_source(self):
-        self.assertEqual(self.wiki.SOURCES["Home"], "README.md")
+        self.assertEqual(self.wiki.SOURCES["Home"], "documentation/INDEX.md")
         self.assertEqual(len(set(self.wiki.SOURCES.values())), len(self.wiki.SOURCES))
         for page, source in self.wiki.SOURCES.items():
             with self.subTest(page=page):
                 self.assertTrue((ROOT / source).is_file())
                 self.assertFalse(source.startswith("documentation/wiki/"))
         self.assertFalse((ROOT / "documentation/wiki/Home.md").exists())
+
+
+    def test_readme_recommendations_and_continue_sections_have_inline_images(self):
+        readme = (ROOT / "README.md").read_text()
+        sections = {
+            "Recommendations from your apps": "documentation/screenshots/recommendations-baseline.png",
+            "Continue Watching on Home": "documentation/feature-assets/continue-watching.png",
+        }
+        for heading, expected_image in sections.items():
+            with self.subTest(section=heading):
+                match = re.search(r"^## " + re.escape(heading) + r"\s*\n(.*?)(?=^## |\Z)", readme, re.M | re.S)
+                self.assertIsNotNone(match, "The README must keep a distinct section for this headline feature.")
+                images = re.findall(r'!\[[^\]]*\]\(([^)]+)\)', match.group(1))
+                self.assertIn(expected_image, images, "The feature needs its own inline image before the next section.")
+                self.assertTrue((ROOT / expected_image).is_file())
+
+    def test_wiki_home_is_illustrated_documentation_distinct_from_readme(self):
+        index = (ROOT / "documentation/INDEX.md").read_text()
+        readme = (ROOT / "README.md").read_text()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            self.wiki.generate(output)
+            home = (output / "Home.md").read_text()
+        self.assertNotEqual(home.rsplit("\n\nSource:", 1)[0], self.wiki.rewrite_links(readme, "README.md").rstrip())
+        for heading in ["Recommendations", "Continue Watching", "Performance and complete comparisons", "Stremio catalog add-ons", "Ads and optional collection", "Settings, layout and themes"]:
+            with self.subTest(section=heading):
+                self.assertIn("## " + heading, index)
+                match = re.search(r"^## " + re.escape(heading) + r"\s*\n(.*?)(?=^## |\Z)", home, re.M | re.S)
+                self.assertIsNotNone(match, "Wiki Home must retain the documentation index's guide sections.")
+                self.assertRegex(match.group(1), r'!\[[^\]]*\]\(https://raw\.githubusercontent\.com/pukrvi/vibe-tv/main/[^)]+\)')
+        self.assertIn("## Build, test and contribute", home)
+        self.assertIn("This page is generated; edit the source guide.", home)
 
 
 if __name__ == "__main__":
