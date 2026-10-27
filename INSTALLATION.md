@@ -2,13 +2,13 @@
 
 [Back to the project](README.md) · [Hardware and app results](COMPATIBILITY.md)
 
-Vibe TV is this fork. The Settings screen displays **Vibe TV**. Android’s installed app label remains **Free My TV**; builds use package `io.freemytv`, and produce `FreeMyTV.apk`, `FreeMyTV-webos.ipk` and `FreeMyTV-tizen.wgt`. These names are intentional compatibility identifiers. A documentation rename does not rename the installed app. Build from this fork for its changes; upstream downloads and freemytv.io do not distribute this fork. No Vibe TV release is asserted by this guide.
+Build from this repository for Vibe TV changes. Settings displays Vibe TV; Android still lists the installed app as Free My TV, package `io.freemytv`. Builds produce `FreeMyTV.apk`, `FreeMyTV-webos.ipk` and `FreeMyTV-tizen.wgt`. Those identifiers preserve update compatibility. Upstream downloads and freemytv.io distribute Free My TV, not this fork; this guide does not announce a Vibe TV binary release.
 
 Before installing, understand the changes and keep **Settings → Themes → Google TV** (Original mode) available. An assistant must ask before device changes and let you perform the mode switch on the TV. Use a JDK 17 and Android SDK build-tools 34.0.0/platform android-34 for the CI baseline; the Mac JDK path below is an example, not a requirement.
 
 ## Android TV
 
-About ten minutes. You need a Google TV or Android TV (Android 8 or newer) and a computer on the same Wi-Fi.
+You need a Google TV or Android TV (Android 8 or newer) and a computer on the same Wi-Fi.
 
 ### Build this TCL version
 
@@ -35,11 +35,11 @@ adb -s <TV-IP>:5555 shell cmd appops set io.freemytv APP_AUTO_START allow
 Use the local build configuration and signing key already set up for this checkout. Keep `config.properties` and the
 keystore private; the file contains the TMDB key, and updates must use the same signing key.
 
-### The easy way: an AI assistant
+### With an AI assistant
 
 1. **On the TV**, turn on developer mode: Settings → System → About → press *Android TV OS build* 7 times. Then Settings → System → Developer options → turn on **USB debugging**. Write down the TV's IP address (Settings → Network & Internet).
 2. **On your computer**, open an AI coding assistant ([Claude Code](https://claude.com/claude-code), Codex or Antigravity) and say:
-   > Install Free My TV (github.com/pukrvi/free-my-tv) on my TV at 192.168.1.50. I live in Lisbon.
+   > Install Free My TV (github.com/pukrvi/vibe-tv) on my TV at 192.168.1.50. I live in Lisbon.
 
    It downloads the code, installs the tools it needs, builds the app and puts it on your TV, and asks before anything important. Swap in your TV's IP and your city.
 3. **On the TV**, open *Free My TV* → *Themes* → *Vibe TV 1* (or Simba / Lamplight). That's when the TV asks *Allow USB debugging?* for Free My TV: tick *Always allow* and accept.
@@ -59,7 +59,7 @@ No tools to install besides adb. The APK on the [upstream release](https://githu
 
 If you built Free My TV yourself before, switch back to *Original* and uninstall it first: your build and the release are signed with different keys. For the picks, build it yourself with your TMDB key (below).
 
-### The manual way
+### Build it yourself
 
 1. **On the TV**, do step 1 above.
 2. **Tools:** a JDK (17+), the Android SDK command-line tools (build-tools 34, platform android-34) and adb. On a Mac:
@@ -97,7 +97,7 @@ You need an LG TV (webOS 3 or newer) and a computer on the same Wi-Fi, with Pyth
 1. **On the TV**, open the LG Content Store and install **Developer Mode**. Sign in with a free [LG developer account](https://webostv.developer.lge.com), turn on **Dev Mode Status** (the TV restarts), then turn on **Key Server**. Write down the IP address and the passphrase it shows.
 2. **On your computer**, get the code and build. `config.properties` works as for Google TV (your city, your [TMDB key](#the-tmdb-key)):
    ```bash
-   git clone https://github.com/pukrvi/free-my-tv && cd free-my-tv
+   git clone https://github.com/pukrvi/vibe-tv && cd vibe-tv
    python3 webos/build.py
    ```
 3. **Install.** The first time, it asks for the TV's passphrase; updates don't:
@@ -106,7 +106,7 @@ You need an LG TV (webOS 3 or newer) and a computer on the same Wi-Fi, with Pyth
    ```
 4. **On the TV**, while Free My TV is open, hold a number key on the remote. From then on, that key opens it from anywhere. On a remote without number keys, open it from LG's app list on the home screen, like any other app.
 
-With an AI assistant, say *"Install Free My TV (github.com/pukrvi/free-my-tv) on my LG TV at 192.168.1.50. I live in Lisbon."* It builds the app and hands you the install command, so you type the passphrase yourself.
+With an AI assistant, say *"Install Free My TV (github.com/pukrvi/vibe-tv) on my LG TV at 192.168.1.50. I live in Lisbon."* It builds the app and hands you the install command, so you type the passphrase yourself.
 
 For upstream Free My TV, the [webOS Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) lets you skip the computer: add the repository `https://freemytv.io/webos/apps.json` in the Channel's settings, and Free My TV shows up in its list. That's the release build: it takes the city from the TV's time zone, and the picks need your own build with a [TMDB key](#the-tmdb-key). If you installed your own build, don't update it from there, or the release replaces it.
 
