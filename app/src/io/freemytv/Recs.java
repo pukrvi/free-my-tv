@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Home screen picks ("This morning / afternoon / tonight"): what's trending this week plus recent releases, only from
@@ -128,23 +126,29 @@ final class Recs {
     }
 
     private final Context context;
+    private final AppAvailability appAvailability;
     private final SharedPreferences cache;
-    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final java.util.concurrent.LinkedBlockingDeque<Runnable> ioQueue = new java.util.concurrent.LinkedBlockingDeque<>();
+    private final java.util.concurrent.ThreadPoolExecutor io = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS, ioQueue);
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Listener> listeners = new ArrayList<>();
     private final Map<String, Backdrop> images = new LinkedHashMap<>();   // this hour's, built and ready to draw
     private final java.util.Set<String> pending = new java.util.HashSet<>();
+    private final java.util.Set<Backdrop> pendingBackgrounds = new java.util.HashSet<>();
     private volatile List<Pick> picks = new ArrayList<>();
     private volatile int period = -1;
     private volatile long listAt;
     private volatile boolean fetching;
     private volatile String error = "";
     private volatile boolean light;     // light design: builds only the cards (all three tabs' cards fit in memory)
+    private volatile boolean withTall = true;
     private volatile long failedAt, keyStamp, linkRetryAt;
     private volatile String listLanguage = "";   // language used for the saved titles, genres and texts
 
     private Recs(Context c) {
         context = c;
+        appAvailability = new AppAvailability(pkg -> HomeApps.launchIntent(context.getPackageManager(), pkg) != null);
         cache = c.getSharedPreferences("recs", Context.MODE_PRIVATE);
         if (cache.getInt("version", 0) != CACHE_VERSION) cache.edit().clear().putInt("version", CACHE_VERSION).apply();
         try {
@@ -325,6 +329,27 @@ final class Recs {
         return null;
     }
 
+    /** Card-only artwork stays cheap until selected as the page background. Never tint images on the UI thread. */
+    Backdrop background(Pick p) {
+        Backdrop b = backdrop(p);
+        if (b == null || b.backgroundReady()) return b;
+        synchronized (images) {
+            if (!pendingBackgrounds.add(b)) return null;
+        }
+        // Prioritize the one visible background over queued offscreen artwork, on the same worker.
+        io.prestartCoreThread();
+        ioQueue.addFirst(() -> {
+            boolean ready = false;
+            try { b.prepareBackground(); ready = true; }
+            catch (RuntimeException | OutOfMemoryError e) { AppLog.w("background preparation unavailable"); }
+            finally {
+                synchronized (images) { pendingBackgrounds.remove(b); }
+                if (ready) notifyListeners();
+            }
+        });
+        return null;
+    }
+
     private boolean hasImage(Pick p) {
         return p.backdrop != null && imageFile(p).exists();
     }
@@ -384,9 +409,11 @@ final class Recs {
 
     /** Home screen design: the ready images are rebuilt for it (the light design uses cards, not the whole photo). */
     void setLight(boolean value) {
-        if (value == light) return;
-        light = value;
+        boolean portraits = !value || !"vibe".equals(Prefs.homeDesign());
         synchronized (images) {
+            if (value == light && portraits == withTall) return;
+            light = value;
+            withTall = portraits;
             images.clear();
         }
     }
@@ -740,8 +767,10 @@ final class Recs {
     /** The service's app is on the TV, and the service isn't hidden (an app the TV ships without a subscription, say). */
     private boolean installed(String pkg) {
         if (!HIDDEN.isEmpty()) for (String[] s : SERVICES) if (s[2].equals(pkg) && HIDDEN.contains(s[1])) return false;
-        return HomeApps.launchIntent(context.getPackageManager(), pkg) != null;
+        return appAvailability.available(pkg);
     }
+
+    void appsChanged() { appAvailability.invalidate(); }
 
     private long sourceStamp() {
         long stamp = (Config.TMDB_KEY.hashCode() * 31L + REGION.hashCode()) * 31L + (Config.HIDE_ANIMATION ? 1 : 0);
@@ -888,9 +917,10 @@ final class Recs {
             if (b == null) throw new IOException("unreadable image");
             AppLog.w("backdrop \u201c" + p.title + "\u201d: " + bounds.outWidth + "×" + bounds.outHeight + " → " + Backdrop.W + "×" + Backdrop.H);
             boolean forLight = light;
-            Backdrop backdrop = Backdrop.make(b, forLight);
-            if (forLight != light) return;   // the design changed midway: this one is stale
+            boolean portraits = withTall;
+            Backdrop backdrop = Backdrop.make(b, forLight, false, portraits);
             synchronized (images) {
+                if (forLight != light || portraits != withTall) return;   // the design changed midway
                 images.put(p.backdrop, backdrop);
                 // Home rows can reference the full 24-title list at once. Keeping every ready card avoids the old
                 // 10-image cache evicting artwork as other row layers redraw, causing repeated decode/notify loops.

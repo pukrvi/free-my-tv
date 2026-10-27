@@ -1,0 +1,10 @@
+{
+  "approved_apps_disabled": true,
+  "calendar_sync_enabled": true,
+  "bundled_tcl_enabled": true,
+  "auto_start_allowed": true,
+  "compiler_status": [
+    "speed"
+  ],
+  "home_resumed": true
+}

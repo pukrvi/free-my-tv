@@ -1,3 +1,5 @@
+> Historical read-only phase. The subsequent owner-authorized changes and restart results are in [TCL_G10_OPTIMIZATION.md](TCL_G10_OPTIMIZATION.md).
+
 # TCL G10: read-only device findings
 
 Observed 27 October 2026 after the owner requested another connection to the saved target.

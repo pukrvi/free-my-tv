@@ -1,0 +1,48 @@
+{
+  "protocol": "quick",
+  "warm_ms": [
+    90,
+    61,
+    64
+  ],
+  "cold_ms": [],
+  "navigation": [
+    {
+      "frames": 702,
+      "janky": 13,
+      "p50_ms": 19,
+      "p90_ms": 31,
+      "slow_ui": 9,
+      "slow_draw": 13,
+      "jank_percent": 1.85
+    },
+    {
+      "frames": 706,
+      "janky": 12,
+      "p50_ms": 21,
+      "p90_ms": 31,
+      "slow_ui": 8,
+      "slow_draw": 12,
+      "jank_percent": 1.7
+    },
+    {
+      "frames": 707,
+      "janky": 10,
+      "p50_ms": 23,
+      "p90_ms": 34,
+      "slow_ui": 5,
+      "slow_draw": 10,
+      "jank_percent": 1.41
+    }
+  ],
+  "available_kib": 785968,
+  "home_pss_kib": 111261,
+  "warm_median_ms": 64,
+  "navigation_jank_median_percent": 1.7,
+  "navigation_p50_median_ms": 21,
+  "target_met": false,
+  "rejected_cold_ms": [
+    0
+  ],
+  "cold_protocol": "Atomic am start -S -W, three fresh process launches; zero reused-activity result rejected"
+}
