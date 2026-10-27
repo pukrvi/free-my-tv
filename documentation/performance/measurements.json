@@ -1,0 +1,17 @@
+{
+  "title": "TCL Smart TV Pro · Android 12 · 27 October 2026",
+  "kind": "historical_and_owner_reported_about_snapshots",
+  "caveat": "Historical snapshots, not a controlled three-way benchmark. Reboot, caches and measurement conditions differ; results are specific to this TV.",
+  "states": [
+    {"id": "original", "label": "Original Google TV", "context": "Retained historical baseline", "home_ms": 150, "available_mib": 594, "home_pss_mib": 124},
+    {"id": "vanilla", "label": "Vibe TV before optimization", "context": "Earlier owner-reported reading", "home_ms": 219, "available_mib": 680, "home_pss_mib": null},
+    {"id": "optimized", "label": "Vibe TV optimized", "context": "After optimization + one restart", "home_ms": 90, "available_mib": 782, "home_pss_mib": 71}
+  ],
+  "source": "documentation/TCL_G10_OPTIMIZATION.md",
+  "implementation": "2554711",
+  "claims": [
+    {"id": "home_response", "metric": "home_ms", "baseline": "vanilla", "comparison": "optimized", "direction": "reduction", "rounded_percent": 59},
+    {"id": "available_memory", "metric": "available_mib", "baseline": "vanilla", "comparison": "optimized", "direction": "increase", "rounded_percent": 15},
+    {"id": "home_process_memory", "metric": "home_pss_mib", "baseline": "original", "comparison": "optimized", "direction": "reduction", "rounded_percent": 43}
+  ]
+}

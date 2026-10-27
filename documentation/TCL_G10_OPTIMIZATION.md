@@ -1,5 +1,27 @@
 # TCL G10 optimization results — 27 October 2026
 
+## Three-state comparison
+
+![Three-state Home response and available-memory comparison](performance/comparison.png)
+
+| About snapshot | Original Google TV | Vibe TV before optimization | Optimized + restart |
+|---|---:|---:|---:|
+| Home response | 150 ms | 219 ms | 90 ms |
+| Available memory | 594 MiB | 680 MiB | 782 MiB |
+| Home process memory | 124 MiB | Not recorded | 71 MiB |
+
+Original is a retained historical reading; pre-optimization Vibe is the owner's earlier reported snapshot; optimized Vibe is the post-restart About reading. “Before optimization” describes that Vibe snapshot, not a separately measured pristine upstream installation. These are different conditions, not a controlled three-way test.
+
+## Shareable performance highlights
+
+![Snapshot changes with explicit comparison baselines](performance/highlights.png)
+
+- **59% lower Home response time:** (219 − 90) / 219 = 58.9%, versus pre-optimization Vibe.
+- **15% more available memory:** (782 − 680) / 680 = 15.0%, versus pre-optimization Vibe.
+- **43% lower Home process memory:** (124 − 71) / 124 = 42.7%, versus historical Original Google TV. No pre-optimization Vibe PSS value was supplied for this About comparison.
+
+Use the image's caveat and baseline labels when sharing; keep the full image intact. Available memory is system headroom, not app memory consumption. [Assets, data and reproducible renderer](performance/README.md).
+
 ## Final TV readings after one restart
 
 | About this TV reading | Earlier reading reported by owner | Refreshed after restart |
