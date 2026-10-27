@@ -6,7 +6,7 @@ The October 27, 2026 integration combined Home `b920f4a`, playback `9d4473b` and
 
 | Area | Status and scope | Implementation | Limits / next work |
 |---|---|---|---|
-| Vibe TV 1 home | Device checked: actions, weather, dock, optional Continue Watching, four recommendation shelves | `app/src/io/freemytv/HomeView.java`, `HomeApps.java`, `Recs.java` | More devices/resolutions and spoken accessibility checks |
+| Vibe TV 1 home | Device checked: actions, weather, dock, optional Continue Watching, twelve recommendation shelves in the Android feedback build | `app/src/io/freemytv/HomeView.java`, `HomeApps.java`, `Recs.java` | More devices/resolutions and spoken accessibility checks |
 | Weather and focus | Device checked: six hours/six days together, legible temperatures, visible D-pad focus | `HomeView.java`, `HomeData.java` | Long translations and broader hardware coverage |
 | Continuous Settings | Device checked: rail anchors, cross-section navigation, 11th Shelf item, sleep cancel, reachable About content | `SettingsActivity.java`, `Prefs.java` | All 26 languages and spoken TalkBack not hardware tested |
 | Theme picker | Vibe TV 1, Simba (Free-My-TV), Lamplight selected/rendered on TCL; Google TV last | `HomeActivity.java`, `HomeSurface.java`, `HomeThemeThumbs.java`, `RepositoryHomeView.java`, `LamplightHomeView.java`, `ImpeccableHomeRenderer.java` | Factory-mode switch not activated in the final pass; previews are illustrations |

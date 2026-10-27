@@ -4,6 +4,8 @@ Vibe TV inherits Free My TV's local settings and opt-in media widgets. It has no
 
 ## Network services
 
+The Android recommendation feedback build also requests public catalog metadata/artwork from Anime Kitsu (`anime-kitsu.strem.fun`) and Streaming Catalogs (`7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club`), plus their returned HTTPS artwork hosts. These services receive ordinary connection data and catalog requests; no private streaming-app watch history or TMDB/Watchmode key is sent to the add-ons. Catalogs require no account. [Scope and limits](documentation/ADDONS.md).
+
 TMDB supplies recommendations, images and streaming availability when configured. Open-Meteo receives the configured city coordinates (or the time-zone-derived location) for forecasts. Binance is used when market quotes are enabled; Watchmode is used when its optional key is configured. These providers receive ordinary connection data and the requests needed for their features.
 
 The integrated playback implementation may query TMDB using a watched movie/show title to find missing artwork, and download YouTube thumbnails using a known video ID. That can disclose the requested title or ID to the image/data provider. Do not describe that revision as keeping every playback-derived value on the TV. Image requests depend on available metadata; artwork is not guaranteed.
