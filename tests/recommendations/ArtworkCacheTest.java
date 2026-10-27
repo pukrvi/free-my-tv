@@ -9,6 +9,10 @@ public final class ArtworkCacheTest {
         Set<String> visible = new LinkedHashSet<>();
         for (int i = 0; i < 26; i++) visible.add("visible-" + i);
         cache.retainVisible(visible);
+        // The reusable caller set can change after publication without changing cache protection.
+        Set<String> published = new HashSet<>(visible);
+        cache.retainVisible(published);
+        published.clear();
         for (String key : visible) cache.put(key, new Object());
         // Older requests finish after scrolling. None may replace current visible artwork.
         for (int i = 0; i < 50; i++) cache.put("old-" + i, new Object());

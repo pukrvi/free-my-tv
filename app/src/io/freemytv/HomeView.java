@@ -147,6 +147,11 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
     private final RowText[][] rowText = new RowText[RecommendationPlan.COUNT][];
     private final float[] rowOffset = new float[RecommendationPlan.COUNT];
+    private final List<Recs.Pick> visiblePicks = new ArrayList<>(32);
+    private final float[] visibleOffsets = new float[RecommendationPlan.COUNT];
+    private int visibleRowsMask = -1;
+    private boolean visiblePicksDirty = true;
+    private final Runnable warmMetadata = () -> prefetchVisibleMetadata();
     private final int[] rowCol = new int[RecommendationPlan.COUNT];
     private final Paint[] rowScrimPaints = new Paint[RecommendationPlan.COUNT];
     private final LinearGradient[] rowScrims = new LinearGradient[RecommendationPlan.COUNT];
@@ -426,6 +431,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         NowPlaying.cancelResume();   // returning Home cancels any unfinished provider/search resume attempt
         if (running) return;
         running = true;
+        visiblePicksDirty = true;
         checkNight(false);
         long now = SystemClock.uptimeMillis();
         // Some remotes (Xiaomi's) send one Home press as a burst of 5 to 8, and each one pauses and resumes the home
@@ -478,6 +484,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         okHeld = holdArmed = false;
         Choreographer.getInstance().removeFrameCallback(this);
         handler.removeCallbacks(tick);
+        handler.removeCallbacks(warmMetadata);
         handler.removeCallbacks(reloadSoon);
         resumeWatch.stop();   // the row records only while the home screen shows
         data.removeListener(this);
@@ -520,8 +527,28 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     @Override public void onRecs() {
+        visiblePicksDirty = true; // Metadata may replace an artwork key without changing card identity.
         wake();
         updatePicks();
+    }
+
+    @Override public void onArtwork(String key) {
+        if (!running || key == null) return;
+        // Artwork completion changes no membership, geometry or metadata. Redraw only its visible row(s).
+        for (int row = 0; row < rowLayers.length; row++) {
+            if (rowLayers[row].getVisibility() != VISIBLE) continue;
+            for (Recs.Pick pick : rowItems[row]) if (key.equals(pick.backdrop)) {
+                rowLayers[row].invalidate();
+                break;
+            }
+        }
+        if (!rowItems[0].isEmpty() && key.equals(rowItems[0].get(0).backdrop)) {
+            Backdrop background = recs.background(rowItems[0].get(0));
+            if (background != null && background != bgTo) {
+                showBackdrop(background);
+                wake();
+            }
+        }
     }
 
     private void invalidateAll() {
@@ -925,27 +952,43 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
                     if(row==1){if(empty||visit&&zone!=Z_ROW0+row){List<Recs.Pick> next=rows[row].subList(0,Math.min(20,rows[row].size()));updateRow(row,new ArrayList<>(next));rowRotatedAt[row]=at;}}
                     else if(empty||visit||replace>0){updateRow(row,RecommendationPlan.rotate(rowItems[row],rows[row],recs.plan.specs[row].limit,replace,cycle));rowRotatedAt[row]=at;}
                 }
-                updateSectionLayout();applyPageScroll();layoutRows();warmVisible();wake();
+                // updateRow lays out only changed rows; image callbacks never enter this path.
+                updateSectionLayout();applyPageScroll();warmVisible();wake();
             });
         }
-        for(Layer layer:rowLayers)layer.invalidate();
+        for(Layer layer:rowLayers)if(layer.getVisibility()==VISIBLE)layer.invalidate();
         warmVisible();
         boolean own=rowItems[0].isEmpty()&&Photos.on(getContext());
         Backdrop b=own?Photos.backdrop(getContext(),ownReady):rowItems[0].isEmpty()?null:recs.background(rowItems[0].get(0));
         if(b!=null||rowItems[0].isEmpty()&&!own)showBackdrop(b);
     }
     private void warmVisible(){
-        List<Recs.Pick> visible=new ArrayList<>();
+        int mask=0;
+        for(int row=0;row<rowItems.length;row++)if(rowLayers[row].getVisibility()==VISIBLE&&rowRects[row]!=null)mask|=1<<row;
+        boolean changed=visiblePicksDirty||mask!=visibleRowsMask;
+        for(int row=0;row<rowItems.length;row++)if((mask&(1<<row))!=0&&visibleOffsets[row]!=rowOffset[row])changed=true;
+        if(!changed)return;
+        int entering=mask&~visibleRowsMask;
+        visiblePicksDirty=false;visibleRowsMask=mask;visiblePicks.clear();
         for(int row=0;row<rowItems.length;row++){
-            Layer layer=rowLayers[row];if(layer.getVisibility()!=VISIBLE||rowRects[row]==null)continue;
+            if((mask&(1<<row))==0)continue;
+            // Hidden rows skipped artwork notifications; refresh their cached drawing once on entry.
+            if((entering&(1<<row))!=0)rowLayers[row].invalidate();
+            visibleOffsets[row]=rowOffset[row];
             for(int i=0;i<rowRects[row].length;i++){
                 RectF rect=rowRects[row][i];
-                if(rect!=null&&rect.right>=-96*k&&rect.left<=w+96*k)visible.add(rowItems[row].get(i));
+                if(rect!=null&&rect.right>=-96*k&&rect.left<=w+96*k)visiblePicks.add(rowItems[row].get(i));
             }
         }
-        if(!rowItems[0].isEmpty())visible.add(rowItems[0].get(0));
-        recs.keepVisibleArtwork(visible);
-        recs.prefetchVisible(visible);
+        if(!rowItems[0].isEmpty())visiblePicks.add(rowItems[0].get(0));
+        recs.keepVisibleArtwork(visiblePicks);
+        // Coalesce enrichment outside the scrolling-frame callback; image protection stays immediate.
+        handler.removeCallbacks(warmMetadata);
+        if(running)handler.post(warmMetadata);
+    }
+
+    private void prefetchVisibleMetadata(){
+        if(running)recs.prefetchVisible(visiblePicks);
     }
 
     /** A user photo is ready for the home background, or newly imported photos are available. */
@@ -960,6 +1003,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     private void updateRow(int row, List<Recs.Pick> next) {
+        visiblePicksDirty=true;
         List<Recs.Pick> old = rowItems[row];
         if (samePicks(old, next)) {
             rowItems[row] = next;
@@ -991,6 +1035,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     private void layoutRows() {
+        visiblePicksDirty=true;
         if (rowLabel == null) return;
         for (int i = 0; i < rowItems.length; i++) {
             if (rowRects[i] == null || rowRects[i].length != rowItems[i].size()) {

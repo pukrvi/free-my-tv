@@ -58,7 +58,10 @@ final class Recs {
         java.io.File photo;     // one of your own photos (Photos): no title, no caption
     }
 
-    interface Listener { void onRecs(); }
+    interface Listener {
+        void onRecs();
+        default void onArtwork(String key) { onRecs(); }
+    }
 
     private static final String API = "https://api.themoviedb.org/3";
     /** The backdrops: on a 720p UI, TMDB's 1280-wide copy shows the same and is lighter to download and decode. */
@@ -125,6 +128,7 @@ final class Recs {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Listener> listeners = new ArrayList<>();
     private final ArtworkCache<Backdrop> images = new ArtworkCache<>();
+    private final Set<String> visibleArtworkKeys = new HashSet<>();
     private final java.util.Set<String> pending = new java.util.HashSet<>();
     private final java.util.Set<Backdrop> pendingBackgrounds = new java.util.HashSet<>();
     private volatile List<Pick> picks = new ArrayList<>();
@@ -327,13 +331,16 @@ final class Recs {
 
     /** Protect the actual viewport, including the home background, while allowing old rows to be evicted. */
     void keepVisibleArtwork(List<Pick> visible) {
-        Set<String> keys = new HashSet<>();
-        for (Pick p : visible) if (p.backdrop != null) keys.add(p.backdrop);
-        synchronized (images) { images.retainVisible(keys); }
+        synchronized (images) {
+            visibleArtworkKeys.clear();
+            for (Pick p : visible) if (p.backdrop != null) visibleArtworkKeys.add(p.backdrop);
+            images.retainVisible(visibleArtworkKeys);
+        }
     }
 
     /** Card-only artwork stays cheap until selected as the page background. Never tint images on the UI thread. */
     Backdrop background(Pick p) {
+        final String key = p == null ? null : p.backdrop;
         Backdrop b = backdrop(p);
         if (b == null || b.backgroundReady()) return b;
         synchronized (images) {
@@ -347,7 +354,7 @@ final class Recs {
             catch (RuntimeException | OutOfMemoryError e) { AppLog.w("background preparation unavailable"); }
             finally {
                 synchronized (images) { pendingBackgrounds.remove(b); }
-                if (ready) notifyListeners();
+                if (ready) notifyArtwork(key);
             }
         });
         return null;
@@ -584,6 +591,10 @@ final class Recs {
 
     private void notifyListeners() {
         main.post(() -> { for (Listener l : new ArrayList<>(listeners)) l.onRecs(); });
+    }
+
+    private void notifyArtwork(String key) {
+        main.post(() -> { for (Listener l : new ArrayList<>(listeners)) l.onArtwork(key); });
     }
 
     // MARK: - TMDB
@@ -1114,7 +1125,7 @@ final class Recs {
                 images.put(p.backdrop, backdrop);
                 // Visible entries are pinned; stale queued completions cannot evict them.
             }
-            notifyListeners();
+            notifyArtwork(p.backdrop);
         } catch (IOException | RuntimeException | OutOfMemoryError e) {
             //noinspection ResultOfMethodCallIgnored
             f.delete();

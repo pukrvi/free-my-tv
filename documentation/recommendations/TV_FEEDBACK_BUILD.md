@@ -1,6 +1,8 @@
 # Installed TV feedback build — 27 October 2026
 
 Status: installed for user testing on Vibe TV 1; not the final production checkpoint and not merged to main.
+The subsequent two requested quick fixes and both comparison passes are recorded in
+[QUICK_PERFORMANCE_FIXES.md](QUICK_PERFORMANCE_FIXES.md); the original build below remains preserved for rollback.
 The source starts at optimized TV1 plus Continue Watching checkpoint `197db6e`. The pre-change signed APK and
 fresh baseline profile are preserved privately. The historical stable tag is unchanged.
 
