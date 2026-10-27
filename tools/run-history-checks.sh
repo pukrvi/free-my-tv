@@ -32,7 +32,11 @@ cp "$TMP_CHECKS/base.apk" "$TMP_CHECKS/checks.apk"
 "$BT/apksigner" sign --ks "${FREEMYTV_KEYSTORE:-freemytv.keystore}" --ks-pass "pass:${FREEMYTV_KEYSTORE_PASS:-freemytv}" "$TMP_CHECKS/aligned.apk"
 "$SDK/platform-tools/adb" -s "$DEVICE" install -r --no-incremental "$TMP_CHECKS/aligned.apk"
 installed=true
-"$SDK/platform-tools/adb" -s "$DEVICE" shell am instrument -w -e inspect "${2:-false}" io.freemytv.historychecks/io.freemytv.HistoryChecks | tee "$TMP_CHECKS/result.txt"
+instrument_args=(am instrument -w -e inspect "${2:-false}")
+if [ -n "${3:-}" ]; then instrument_args+=(-e sample_title "$3"); fi
+instrument_args+=(io.freemytv.historychecks/io.freemytv.HistoryChecks)
+printf -v instrument_command '%q ' "${instrument_args[@]}"
+"$SDK/platform-tools/adb" -s "$DEVICE" shell "$instrument_command" | tee "$TMP_CHECKS/result.txt"
 if [ "${2:-false}" != true ]; then rg -q '^PASS:' "$TMP_CHECKS/result.txt"; fi
 if [ "${2:-false}" != true ]; then
   "$SDK/platform-tools/adb" -s "$DEVICE" shell am start -a android.intent.action.MAIN -c android.intent.category.HOME

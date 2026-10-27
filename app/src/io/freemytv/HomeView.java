@@ -163,6 +163,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     private AlertDialog cardMenu;
     private final Map<String, BitmapShader> resumeArtworkShaders = new HashMap<>();
     private int resumeCol;
+    private int resumeLaunchGeneration;
     private final Map<String, HomeApps.Item> resumeTiles = new HashMap<>();   // each app's card tile (null = in the making)
 
     // Shelf
@@ -422,6 +423,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     // MARK: - Lifecycle (called by HomeActivity)
 
     public void resume() {
+        NowPlaying.cancelResume();   // returning Home cancels any unfinished provider/search resume attempt
         if (running) return;
         running = true;
         checkNight(false);
@@ -465,6 +467,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     public void pause() {
+        resumeLaunchGeneration++;   // a pending title lookup must not launch after Home has left the foreground
         if (!running) return;
         running = false;
         cancelReorder(true);
@@ -2744,6 +2747,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
     }
 
     private void activate() {
+        final int launchGeneration = ++resumeLaunchGeneration;
         wake();
         if (reordering) {   // TalkBack's click while moving an app: drop it
             dropReorder();
@@ -2791,7 +2795,7 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
             sourceY = tiles.getTranslationY();
         }
         click.open();
-        Runnable resume = resumeEntry == null ? null : resumeWatch.prepareResume(resumeEntry);
+        NowPlaying.cancelResume();
         if (it.kind == HomeApps.ALL_APPS) {
             openSheet();
             return;
@@ -2802,10 +2806,25 @@ final class HomeView extends ViewGroup implements HomeSurface, Choreographer.Fra
         }
         RectF launchFrom = new RectF(r);
         launchFrom.offset(0, sourceY);
-        boolean opened = HomeApps.open(activity, it, this, Math.round(launchFrom.left), Math.round(launchFrom.top),
-                Math.round(launchFrom.width()), Math.round(launchFrom.height()));
-        if (opened && resume != null) handler.postDelayed(resume, 700);
-        if (!opened) showToast(Ui.trf("Couldn't open {app}.", "app", it.label));
+        if (resumeEntry != null && Resume.uri(resumeEntry).isEmpty()
+                && (resumeEntry.pkg.equals("com.stremio.one") || resumeEntry.pkg.equals("com.stremio"))) {
+            ResumeLookup.resolve(getContext(), resumeEntry, linked -> handler.post(() -> {
+                if (launchGeneration != resumeLaunchGeneration || !isAttachedToWindow()) return;
+                HomeApps.Item target = HomeApps.app(linked.pkg, linked.app.isEmpty() ? linked.pkg : linked.app, Resume.uri(linked));
+                target.resume = true;
+                openItem(target, launchFrom, linked);
+            }));
+        } else {
+            if (resumeEntry != null && Resume.uri(resumeEntry).isEmpty() && resumeEntry.pkg.contains("youtube")) it.resumeQuery = resumeEntry.title;
+            openItem(it, launchFrom, resumeEntry);
+        }
+    }
+
+    private void openItem(HomeApps.Item item, RectF from, Resume.Entry entry) {
+        boolean opened = HomeApps.open(activity, item, this, Math.round(from.left), Math.round(from.top),
+                Math.round(from.width()), Math.round(from.height()));
+        if (opened && entry != null) NowPlaying.requestResume(activity, entry, item.resumeQuery != null && !item.resumeQuery.isEmpty());
+        if (!opened) showToast(Ui.trf("Couldn't open {app}.", "app", item.label));
     }
 
     // MARK: - Holding OK: All Apps puts the app on the shelf or takes it off; on the shelf, the app is lifted to move
